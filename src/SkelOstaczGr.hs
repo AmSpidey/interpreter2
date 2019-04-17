@@ -9,14 +9,49 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-interpret :: Expr -> Integer
-interpret x = case x of
-  EAdd  expr1 Plus expr2  -> interpret expr1 + interpret expr2
-  EAdd  expr1 Minus expr2  -> interpret expr1 - interpret expr2
-  EMul expr1 Times expr2 -> interpret expr1 * interpret expr2
-  EMul expr1 Div expr2 -> if interpret expr2 == 0
-                            then 0 --obsluz blad potem!
-                            else quot (interpret expr1) (interpret expr2)
+data Value = ValInt Integer | ValS String | ValB BVAL deriving (Ord, Eq, Show)
+instance Num Value where
+  ValInt a + ValInt b = ValInt $ a + b
+  ValInt a - ValInt b = ValInt $ a - b
+  ValInt a * ValInt b = ValInt $ a * b
+instance Real Value where
+  toRational (ValInt a) = toRational a
+instance Enum Value where
+  fromEnum (ValInt a) = fromEnum (a)
+instance Integral Value where
+  mod (ValInt a) (ValInt b) = ValInt $ mod a b
+  quot (ValInt a) (ValInt b) = ValInt $ quot a b
+
+type Interpretation a = Maybe a
+{-ValInt a '+' ValInt b = ValInt $ a + b
+ValInt a '-' ValInt b = a - b
+ValInt a '*' ValInt b = a * b
+ValInt a '/' ValInt b = a / b-}
+
+-- TODO
+-- turn it into Maybe Value function and handle the errors (int + string = left)
+-- TODO
+-- beautify all the dos in EAdd, EMul
+interpretExpr :: Expr -> Interpretation Value
+interpretExpr (ELitInt integer) = Just $ ValInt integer
+interpretExpr (ELitBool bval) = Just $ ValB bval
+interpretExpr (EString string) = Just $ ValS string
+interpretExpr (EAdd expr1 op expr2)  = do
+                                              v1 <- interpretExpr expr1
+                                              v2 <- interpretExpr expr2
+                                              case op of
+                                                Plus -> return $ v1 + v2
+                                                Minus -> return $ v1 - v2
+
+interpretExpr (EMul expr1 op expr2) = do
+                                               v1 <- interpretExpr expr1
+                                               v2 <- interpretExpr expr2
+                                               case op of
+                                                 Times -> return $ v1 * v2
+                                                 Div -> return $ quot v1 v2
+                                                 Mod -> return $ mod v1 v2
+
+interpretExpr _ = Nothing
 
 transIdent :: Ident -> Result
 transIdent x = case x of

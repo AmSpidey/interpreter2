@@ -26,10 +26,10 @@ type Verbosity = Int
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = if v > 1 then putStrLn s else return ()
 
---runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
+runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
---run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
+run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
            Bad s    -> do putStrLn "\nParse              Failed...\n"
                           putStrV v "Tokens:"
@@ -38,9 +38,7 @@ run v p s = let ts = myLLexer s in case p ts of
                           exitFailure
            Ok  tree -> do putStrLn "\nParse Successful!"
                           showTree v tree
-                          putStrLn "*******************"
-                          putStrLn (show $ interpretExpr (treeToExp tree))
-                          putStrLn "***************"
+                          --putStrLn (show $ interpret (treeToExp tree))
 
                           exitSuccess
 
@@ -63,8 +61,7 @@ usage = do
   exitFailure
 
 treeToExp :: Program -> Expr
-treeToExp (Prog ([FnDef _ _ _ (BlockStmt [Ret e])])) = e
-treeToExp _ = (ELitInt 9)
+treeToExp (Prog ([FnDef _ _ _ (BlockStmt [SExp e])])) = e
 
 main :: IO ()
 main = do
