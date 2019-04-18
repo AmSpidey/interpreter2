@@ -9,7 +9,7 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-data Value = ValInt Integer | ValS String | ValB BVAL deriving (Ord, Eq, Show)
+data Value = ValInt Integer | ValS String | ValB Bool deriving (Ord, Eq, Show)
 instance Num Value where
   ValInt a + ValInt b = ValInt $ a + b
   ValInt a - ValInt b = ValInt $ a - b
@@ -34,23 +34,37 @@ ValInt a '/' ValInt b = a / b-}
 -- beautify all the dos in EAdd, EMul
 interpretExpr :: Expr -> Interpretation Value
 interpretExpr (ELitInt integer) = Just $ ValInt integer
-interpretExpr (ELitBool bval) = Just $ ValB bval
+interpretExpr (ELitBool (BVAL "true")) = Just $ ValB True
 interpretExpr (EString string) = Just $ ValS string
 interpretExpr (EAdd expr1 op expr2)  = do
-                                              v1 <- interpretExpr expr1
-                                              v2 <- interpretExpr expr2
-                                              case op of
-                                                Plus -> return $ v1 + v2
-                                                Minus -> return $ v1 - v2
-
+  v1 <- interpretExpr expr1
+  v2 <- interpretExpr expr2
+  case op of
+    Plus -> return $ v1 + v2
+    Minus -> return $ v1 - v2
 interpretExpr (EMul expr1 op expr2) = do
-                                               v1 <- interpretExpr expr1
-                                               v2 <- interpretExpr expr2
-                                               case op of
-                                                 Times -> return $ v1 * v2
-                                                 Div -> return $ quot v1 v2
-                                                 Mod -> return $ mod v1 v2
-
+ v1 <- interpretExpr expr1
+ v2 <- interpretExpr expr2
+ case op of
+   Times -> return $ v1 * v2
+   Div -> return $ quot v1 v2
+   Mod -> return $ mod v1 v2
+interpretExpr (Neg expr1) = do
+  ValInt v <- interpretExpr expr1
+  return $ ValInt ((-1)*v)
+interpretExpr (Not expr1) = do
+  ValB v <- interpretExpr expr1
+  return $ ValB (not v)
+interpretExpr (ERel expr1 relop expr2) = do
+  ValB v1 <- interpretExpr expr1
+  ValB v2 <- interpretExpr expr2
+  case relop of
+    LTH -> return $ ValB $ v1 < v2
+    LE -> return $ ValB $ v1 <= v2
+    GTH -> return $ ValB $ v1 > v2
+    GE -> return $ ValB $ v1 > v2
+    EQU -> return $ ValB $ v1 == v2
+    NE -> return $ ValB $ v1 /= v2
 interpretExpr _ = Nothing
 
 transIdent :: Ident -> Result
