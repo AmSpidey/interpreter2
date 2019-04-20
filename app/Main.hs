@@ -39,7 +39,7 @@ run v p s = let ts = myLLexer s in case p ts of
            Ok  tree -> do putStrLn "\nParse Successful!"
                           showTree v tree
                           putStrLn "*******************"
-                          putStrLn (show $ interpretExpr (treeToExp tree))
+                          putStrLn (show (evalExpr (treeToExp tree)))
                           putStrLn "***************"
 
                           exitSuccess

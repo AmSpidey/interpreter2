@@ -9,12 +9,15 @@ import ErrM
 import qualified Data.Map as M
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Maybe(fromMaybe)
 type Result = Err String
 
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
 data Value = ValInt Integer | ValS String | ValB Bool deriving (Ord, Eq, Show)
+getBool :: Value -> Bool
+getBool (ValB v) = v
 
 type Loc = Int
 
@@ -27,7 +30,7 @@ type Store = (Mem, Loc)
 
 type SS a = StateT Store (Reader Env) a
 
--- rezerwacja nowej lokacji
+-- reserving new location
 newloc :: SS Loc
 newloc = do
   (st,l) <- get
@@ -57,20 +60,20 @@ ValInt a '*' ValInt b = a * b
 ValInt a '/' ValInt b = a / b-}
 
 -- TODO
--- handle the errors (int + string = left)
--- TODO
--- beautify all the dos in EAdd, EMul
+-- EApp (functions)
+evalExpr :: Expr -> Value
+evalExpr expr = do
+  runReader (evalStateT (interpretExpr expr) (M.empty, 0)) (M.empty)
+  --runReader (runStateT (interpretExpr expr) (M.Map.Empty 0))
 interpretExpr :: Expr -> SS Value
-interpretExpr (EVar var) = do
+interpretExpr (EVar (Ident var)) = do
   env <- ask
-  -- TODO handle maybe--
-  let l = M.lookup x env
-  (st,_) <- get
-  return $ M.lookup l st
-
-interpretExpr (ELitInt integer) = Just $ ValInt integer
-interpretExpr (ELitBool (BVAL "true")) = Just $ ValB True
-interpretExpr (EString string) = Just $ ValS string
+  let l = fromMaybe (error "undefined variable") (M.lookup var env)
+  (st,_)  <- get
+  return $ fromMaybe (error "undefined location") (M.lookup l st)
+interpretExpr (ELitInt integer) = return $ ValInt integer
+interpretExpr (ELitBool (BVAL "true")) = return $ ValB True
+interpretExpr (EString string) = return $ ValS string
 interpretExpr (EAdd expr1 op expr2)  = do
   v1 <- interpretExpr expr1
   v2 <- interpretExpr expr2
@@ -84,15 +87,15 @@ interpretExpr (EMul expr1 op expr2) = do
    Times -> return $ v1 * v2
    Div -> return $ quot v1 v2
    Mod -> return $ mod v1 v2
-interpretExpr (Neg expr1) = do
-  ValInt v <- interpretExpr expr1
-  return $ ValInt ((-1)*v)
-interpretExpr (Not expr1) = do
-  ValB v <- interpretExpr expr1
+interpretExpr (Neg expr) = do
+  v <- interpretExpr expr
+  return $ ((-1)*v)
+interpretExpr (Not expr) = do
+  v <- getBool <$> (interpretExpr expr)
   return $ ValB (not v)
 interpretExpr (ERel expr1 relop expr2) = do
-  ValInt v1 <- interpretExpr expr1
-  ValInt v2 <- interpretExpr expr2
+  v1 <- interpretExpr expr1
+  v2 <- interpretExpr expr2
   case relop of
     LTH -> return $ ValB $ v1 < v2
     LE -> return $ ValB $ v1 <= v2
@@ -101,14 +104,13 @@ interpretExpr (ERel expr1 relop expr2) = do
     EQU -> return $ ValB $ v1 == v2
     NE -> return $ ValB $ v1 /= v2
 interpretExpr (EAnd expr1 expr2) = do
-  ValB v1 <- interpretExpr expr1
-  ValB v2 <- interpretExpr expr2
+  v1 <- getBool <$> (interpretExpr expr1)
+  v2 <- getBool <$> (interpretExpr expr2)
   return $ ValB $ v1 && v2
 interpretExpr (EOr expr1 expr2) = do
-  ValB v1 <- interpretExpr expr1
-  ValB v2 <- interpretExpr expr2
+  v1 <- getBool <$> (interpretExpr expr1)
+  v2 <- getBool <$> (interpretExpr expr2)
   return $ ValB $ v1 || v2
-interpretExpr _ = Nothing
 
 transIdent :: Ident -> Result
 transIdent x = case x of
