@@ -20,7 +20,11 @@ checkExpr (ELitBool _) = do
   return Bool
 checkExpr (EString _) = do
   return Str
-checkExpr
+checkExpr (Neg b) = do
+  t <- checkExpr b
+  case t of
+    Bool -> return Bool
+    _ -> return "type check error in " + show b
 {--checkExpr :: Expr -> Type -> S
 
 check-}

@@ -2,14 +2,11 @@
 <project version="4">
   <component name="BookmarkManager">
     <bookmark url="file://$PROJECT_DIR$/src/SkelOstaczGr.hs" line="50" />
-    <bookmark url="file://$PROJECT_DIR$/src/SkelOstaczGr.hs" line="69" />
+    <bookmark url="file://$PROJECT_DIR$/src/SkelOstaczGr.hs" line="67" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0129cb46-5600-4d61-8a6d-08c572cd0346" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/src/TypeChecker.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/Main.hs" beforeDir="false" afterPath="$PROJECT_DIR$/app/Main.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/SkelOstaczGr.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SkelOstaczGr.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/TypeChecker.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/TypeChecker.hs" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -19,9 +16,9 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.5956771">
+    <splitter split-orientation="horizontal" split-proportion="0.73680866">
       <split-first>
-        <splitter split-orientation="horizontal" split-proportion="0.53414637">
+        <splitter split-orientation="horizontal" split-proportion="0.66346157">
           <split-first>
             <splitter split-orientation="vertical" split-proportion="0.6761905">
               <split-first>
@@ -80,7 +77,7 @@
                     <entry file="file://$PROJECT_DIR$/src/SkelOstaczGr.hs">
                       <provider selected="true" editor-type-id="text-editor">
                         <state relative-caret-position="-210">
-                          <caret line="90" column="28" selection-start-line="90" selection-start-column="28" selection-end-line="90" selection-end-column="28" />
+                          <caret line="88" column="28" selection-start-line="88" selection-start-column="28" selection-end-line="88" selection-end-column="28" />
                         </state>
                       </provider>
                     </entry>
@@ -97,8 +94,8 @@
                   <file leaf-file-name="TypeChecker.hs" pinned="false" current-in-tab="true">
                     <entry file="file://$PROJECT_DIR$/src/TypeChecker.hs">
                       <provider selected="true" editor-type-id="text-editor">
-                        <state relative-caret-position="240">
-                          <caret line="16" column="23" selection-start-line="16" selection-start-column="23" selection-end-line="16" selection-end-column="23" />
+                        <state relative-caret-position="210">
+                          <caret line="14" lean-forward="true" selection-start-line="14" selection-end-line="14" />
                         </state>
                       </provider>
                     </entry>
@@ -110,8 +107,8 @@
                   <file leaf-file-name="ostacz_gr.cf" pinned="false" current-in-tab="true">
                     <entry file="file://$PROJECT_DIR$/src/ostacz_gr.cf">
                       <provider selected="true" editor-type-id="text-editor">
-                        <state relative-caret-position="375">
-                          <caret line="97" column="27" selection-start-line="97" selection-start-column="27" selection-end-line="97" selection-end-column="27" />
+                        <state relative-caret-position="128">
+                          <caret line="72" column="15" selection-start-line="72" selection-start-column="11" selection-end-line="72" selection-end-column="15" />
                         </state>
                       </provider>
                     </entry>
@@ -149,8 +146,8 @@
                   <file leaf-file-name="AbsOstaczGr.hs" pinned="false" current-in-tab="true">
                     <entry file="file://$PROJECT_DIR$/src/AbsOstaczGr.hs">
                       <provider selected="true" editor-type-id="text-editor">
-                        <state relative-caret-position="555">
-                          <caret line="55" column="14" lean-forward="true" selection-start-line="55" selection-start-column="14" selection-end-line="55" selection-end-column="14" />
+                        <state relative-caret-position="311">
+                          <caret line="47" column="32" lean-forward="true" selection-start-line="47" selection-start-column="32" selection-end-line="47" selection-end-column="32" />
                         </state>
                       </provider>
                     </entry>
@@ -168,8 +165,8 @@
               <file leaf-file-name="SkelOstaczGr.hs" pinned="false" current-in-tab="true">
                 <entry file="file://$PROJECT_DIR$/src/SkelOstaczGr.hs">
                   <provider selected="true" editor-type-id="text-editor">
-                    <state relative-caret-position="-900">
-                      <caret line="12" column="24" selection-start-line="12" selection-start-column="24" selection-end-line="12" selection-end-column="24" />
+                    <state relative-caret-position="225">
+                      <caret line="27" column="21" lean-forward="true" selection-start-line="27" selection-start-column="21" selection-end-line="27" selection-end-column="21" />
                     </state>
                   </provider>
                 </entry>
@@ -252,6 +249,7 @@
       <find>BVAL</find>
       <find>Lexer</find>
       <find>evalE</find>
+      <find>Type</find>
     </findStrings>
     <replaceStrings>
       <replace>interpretIntExpr</replace>
@@ -404,12 +402,12 @@
       <option name="presentableId" value="Default" />
       <updated>1555156194711</updated>
       <workItem from="1555156196064" duration="95739000" />
-      <workItem from="1555707523817" duration="18202000" />
+      <workItem from="1555707523817" duration="23012000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="113941000" />
+    <option name="totallyTimeSpent" value="118751000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="67" y="25" width="1853" height="1055" extended-state="6" />
@@ -587,13 +585,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/ostacz_gr.cf">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1200">
-          <caret line="80" column="27" selection-start-line="80" selection-start-column="27" selection-end-line="80" selection-end-column="27" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/package.yaml">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="376">
@@ -622,20 +613,27 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/SkelOstaczGr.hs">
+    <entry file="file://$PROJECT_DIR$/src/ostacz_gr.cf">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-210">
-          <caret line="90" column="28" selection-start-line="90" selection-start-column="28" selection-end-line="90" selection-end-column="28" />
+        <state relative-caret-position="1200">
+          <caret line="80" column="27" selection-start-line="80" selection-start-column="27" selection-end-line="80" selection-end-column="27" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/AbsOstaczGr.hs">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/SkelOstaczGr.hs">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-210">
+          <caret line="88" column="28" selection-start-line="88" selection-start-column="28" selection-end-line="88" selection-end-column="28" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/TypeChecker.hs">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="16" column="23" selection-start-line="16" selection-start-column="23" selection-end-line="16" selection-end-column="23" />
+        <state relative-caret-position="210">
+          <caret line="14" lean-forward="true" selection-start-line="14" selection-end-line="14" />
         </state>
       </provider>
     </entry>
