@@ -12,8 +12,7 @@ separator nonempty TopDef "" ;
 
 ArgByVal. 	   Arg ::= Type Ident;
 
-ArgByVar.	   Arg2 ::= "&" Type Ident ; -- może jednak & po typie?
-
+ArgByVar.	   Arg2 ::= "&" Type Ident ;
 separator  Arg "," ;
 
 -- Statements --

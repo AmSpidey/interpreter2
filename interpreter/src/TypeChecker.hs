@@ -8,7 +8,7 @@ import Control.Monad.State
 import Data.Maybe(fromMaybe)
 import Control.Monad.Except
 
-data Types = TI | TB | TS | Type :->: Type deriving (Eq, Show)
+data Types = TI | TB | TS | Types :->: Types deriving (Eq, Show)
 
 type TypeError = String
 defaultErr = "error in typeChecker"
@@ -16,11 +16,19 @@ defaultErr = "error in typeChecker"
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
 
-checkTopDef :: TopDef -> S Bool
-checkTopDef (FnDef (Type t) (Ident f) args block) = do
+--checkTopDef :: TopDef -> S Bool
+--checkTopDef (FnDef (Type t) (Ident f) args block) = do
+
+checkBlock :: Block -> S Bool
+checkBlock (BlockStmt (Decl t (NoInit (Ident v):vars):bs)) = local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
 
 unifyTypes :: Types -> Types -> Types -> Bool
 unifyTypes t1 t2 t = t1 == t2 && t1 == t
+
+transType :: Type -> Types
+transType TInt = TI
+transType TBool = TB
+transType TStr = TS
 
 checkExpr :: Expr -> S Types
 checkExpr (EVar (Ident x)) = do
