@@ -48,7 +48,7 @@ instance Num Value where
 instance Real Value where
   toRational (ValInt a) = toRational a
 instance Enum Value where
-  fromEnum (ValInt a) = fromEnum (a)
+  fromEnum (ValInt a) = fromEnum a
 instance Integral Value where
   mod (ValInt a) (ValInt b) = ValInt $ mod a b
   quot (ValInt a) (ValInt b) = ValInt $ quot a b
@@ -62,8 +62,7 @@ ValInt a '/' ValInt b = a / b-}
 -- TODO
 -- EApp (functions)
 evalExpr :: Expr -> Value
-evalExpr expr = do
-  runReader (evalStateT (interpretExpr expr) (M.empty, 0)) (M.empty)
+evalExpr expr = runReader (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty
   --runReader (runStateT (interpretExpr expr) (M.Map.Empty 0))
 interpretExpr :: Expr -> SS Value
 interpretExpr (EVar (Ident var)) = do

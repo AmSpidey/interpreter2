@@ -16,6 +16,12 @@ defaultErr = "error in typeChecker"
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
 
+checkTopDef :: TopDef -> S Bool
+checkTopDef (FnDef (Type t) (Ident f) args block) = do
+
+unifyTypes :: Types -> Types -> Types -> Bool
+unifyTypes t1 t2 t = t1 == t2 && t1 == t
+
 checkExpr :: Expr -> S Types
 checkExpr (EVar (Ident x)) = do
   env <- ask
