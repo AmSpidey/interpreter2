@@ -104,12 +104,12 @@ interpretExpr (ERel expr1 relop expr2) = do
     EQU -> return $ ValB $ v1 == v2
     NE -> return $ ValB $ v1 /= v2
 interpretExpr (EAnd expr1 expr2) = do
-  v1 <- getBool <$> (interpretExpr expr1)
-  v2 <- getBool <$> (interpretExpr expr2)
+  v1 <- getBool <$> interpretExpr expr1
+  v2 <- getBool <$> interpretExpr expr2
   return $ ValB $ v1 && v2
 interpretExpr (EOr expr1 expr2) = do
-  v1 <- getBool <$> (interpretExpr expr1)
-  v2 <- getBool <$> (interpretExpr expr2)
+  v1 <- getBool <$> interpretExpr expr1
+  v2 <- getBool <$> interpretExpr expr2
   return $ ValB $ v1 || v2
 
 transIdent :: Ident -> Result
