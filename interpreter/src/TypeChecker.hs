@@ -3,7 +3,7 @@ module TypeChecker where
 import AbsOstaczGr
 import ErrM
 import qualified Data.Map as M
-import Control.Monad.Reader
+import Control.Monad
 import Control.Monad.State
 import Data.Maybe(fromMaybe)
 import Control.Monad.Except
@@ -19,11 +19,35 @@ type S a = ReaderT TypeEnv (Except TypeError) a
 --checkTopDef :: TopDef -> S Bool
 --checkTopDef (FnDef (Type t) (Ident f) args block) = do
 
-checkBlock :: Block -> S Bool
-checkBlock (BlockStmt (Decl t (NoInit (Ident v):vars):bs)) = local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
 
-unifyTypes :: Types -> Types -> Types -> Bool
-unifyTypes t1 t2 t = t1 == t2 && t1 == t
+checkBlock :: Block -> S ()
+checkBlock (BlockStmt (PreDecl t (Ident v):bs)) = local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
+checkBlock (BlockStmt (Ass (Ident x) e:bs)) = do
+  t1 <- checkExpr e
+  t2 <- checkExpr (EVar (Ident x))
+  if t1 /= t2
+    then throwError defaultErr
+    else checkBlock (BlockStmt bs)
+checkBlock (BlockStmt (Incr (Ident x):bs)) = do
+  t <- checkExpr (EVar (Ident x))
+  if t /= TI
+    then throwError defaultErr
+    else checkBlock (BlockStmt bs)
+checkBlock (BlockStmt (Decr (Ident x):bs)) = do
+  t <- checkExpr (EVar (Ident x))
+  if t /= TI
+    then throwError defaultErr
+    else checkBlock (BlockStmt bs)
+
+{--insertDecl :: Stmt -> TypeEnv -> TypeEnv
+insertDecl (Decl t ([])) env = env
+insertDecl (Decl t (NoInit (Ident v):vars)) env = do
+  M.insert v (transType t) env
+insertDecl (Decl t (Init (Ident v):vars)) env = do
+  M.insert v (transType t) env-}
+
+unifyTypes :: Types -> Types -> Types -> S ()
+unifyTypes t1 t2 t = Control.Monad.when (t1 /= t2 || t1 == t) $ throwError defaultErr
 
 transType :: Type -> Types
 transType TInt = TI

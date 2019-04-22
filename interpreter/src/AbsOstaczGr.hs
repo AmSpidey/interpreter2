@@ -25,6 +25,7 @@ data Stmt
     = Empty
     | BStmt Block
     | Decl Type [Item]
+    | PreDecl Type Ident
     | Ass Ident Expr
     | Incr Ident
     | Decr Ident
