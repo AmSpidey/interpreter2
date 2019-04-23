@@ -2,6 +2,7 @@ module TypeChecker where
 
 import AbsOstaczGr
 import ErrM
+import Simplified
 import qualified Data.Map as M
 import Control.Monad(when)
 import Control.Monad.Reader
@@ -12,32 +13,11 @@ import Control.Monad.Except
 data Types = TI | TB | TS | Types :->: Types deriving (Eq, Show)
 
 type TypeError = String
-defaultErr = "error in typeChecker"
+defaultErr = "error in typeChecker. Go check your code!"
+fatalErr = "fatal error in typeChecker. This shouldn't have happened. Blamey."
 
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
-
-checkTopDef :: TopDef -> S ()
-checkTopDef (FnDef t (Ident f) args block) = do
-  env <- ask
-  let mt = M.lookup f env
-  if isNothing mt
-    then local (M.insert f (transType t)) (checkBlock block)
-    else throwError defaultErr
-
-typeFromArgs :: [Arg] -> Types -> Types
-typeFromArgs [] t = t
-typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
-typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
-
-declFromArgs :: [Arg] -> S Block
-declFromArgs (ArgByVal a x:args) = return $ BlockStmt [PreDecl a x]
-declFromArgs (ArgByVar a x:args) = do
-  env <- ask
-  let mt = M.lookup x env
-  if isNothing mt
-    then throwError defaultErr
-    else return $ BlockStmt [PreDecl a x]
 
 isInEnv :: Ident -> S Bool
 isInEnv (Ident x) = do
@@ -47,14 +27,41 @@ isInEnv (Ident x) = do
     then return False
     else return True
 
+preDeclFunctions :: [TopDef] -> TypeEnv -> Except TypeError TypeEnv
+preDeclFunctions [] env = return env
+preDeclFunctions (FnDef t (Ident f) args block:funcs) env = do
+  let mt = M.lookup f env
+  if isNothing mt
+    then preDeclFunctions funcs (M.insert f (typeFromArgs args (transType t)) env)
+    else throwError defaultErr
+
+checkTopDefinitions :: [TopDef] -> S()
+checkTopDefinitions = mapM_ checkTopDef
+
+checkTopDef :: TopDef -> S ()
+checkTopDef (FnDef t (Ident f) args block) = do
+  env <- ask
+  let mt = M.lookup f env
+  if isNothing mt
+    then local (M.insert f (typeFromArgs args (transType t))) (funcWithDecls)
+    else throwError defaultErr
+  where funcWithDecls = checkBlock (concatBlocks (declFromArgs args) block)
+
+typeFromArgs :: [Arg] -> Types -> Types
+typeFromArgs [] t = t
+typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
+typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
+
+declFromArgs :: [Arg] -> Block
+declFromArgs (ArgByVal a x:args) = BlockStmt [PreDecl a x]
+declFromArgs (ArgByVar a x:args) = BlockStmt [PreDecl a x]
+
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt (PreDecl t (Ident v):bs)) = do
-  env <- ask
-  let mt = M.lookup v env
-  is <- isInEnv (Ident v)
-  if is
-    then local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
-    else throwError defaultErr
+  redecl <- isInEnv (Ident v)
+  if redecl
+    then throwError defaultErr
+    else local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
 checkBlock (BlockStmt (Ass (Ident x) e:bs)) = do
   t1 <- checkExpr e
   t2 <- checkExpr (EVar (Ident x))
