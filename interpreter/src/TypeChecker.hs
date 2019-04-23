@@ -3,9 +3,10 @@ module TypeChecker where
 import AbsOstaczGr
 import ErrM
 import qualified Data.Map as M
-import Control.Monad
+import Control.Monad(when)
+import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, isNothing)
 import Control.Monad.Except
 
 data Types = TI | TB | TS | Types :->: Types deriving (Eq, Show)
@@ -16,12 +17,44 @@ defaultErr = "error in typeChecker"
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
 
---checkTopDef :: TopDef -> S Bool
---checkTopDef (FnDef (Type t) (Ident f) args block) = do
+checkTopDef :: TopDef -> S ()
+checkTopDef (FnDef t (Ident f) args block) = do
+  env <- ask
+  let mt = M.lookup f env
+  if isNothing mt
+    then local (M.insert f (transType t)) (checkBlock block)
+    else throwError defaultErr
 
+typeFromArgs :: [Arg] -> Types -> Types
+typeFromArgs [] t = t
+typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
+typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
+
+declFromArgs :: [Arg] -> S Block
+declFromArgs (ArgByVal a x:args) = return $ BlockStmt [PreDecl a x]
+declFromArgs (ArgByVar a x:args) = do
+  env <- ask
+  let mt = M.lookup x env
+  if isNothing mt
+    then throwError defaultErr
+    else return $ BlockStmt [PreDecl a x]
+
+isInEnv :: Ident -> S Bool
+isInEnv (Ident x) = do
+  env <- ask
+  let mt = M.lookup x env
+  if isNothing mt
+    then return False
+    else return True
 
 checkBlock :: Block -> S ()
-checkBlock (BlockStmt (PreDecl t (Ident v):bs)) = local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
+checkBlock (BlockStmt (PreDecl t (Ident v):bs)) = do
+  env <- ask
+  let mt = M.lookup v env
+  is <- isInEnv (Ident v)
+  if is
+    then local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
+    else throwError defaultErr
 checkBlock (BlockStmt (Ass (Ident x) e:bs)) = do
   t1 <- checkExpr e
   t2 <- checkExpr (EVar (Ident x))
@@ -75,30 +108,25 @@ checkExpr (Neg x) = do
 checkExpr (EMul expr1 op expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
-  if t1 /= TI || t2 /= TI
-    then throwError defaultErr
-    else return TI
+  unifyTypes t1 t2 TI
+  return TI
 checkExpr (EAdd expr1 op expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
-  if t1 /= TI || t2 /= TI
-    then throwError defaultErr
-    else return TI
+  unifyTypes t1 t2 TI
+  return TI
 checkExpr (ERel expr1 op expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
-  if t1 /= TI || t2 /= TI
-    then throwError defaultErr
-    else return TB
+  unifyTypes t1 t2 TI
+  return TB
 checkExpr (EAnd expr1 expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
-  if t1 /= TB || t2 /= TB
-    then throwError defaultErr
-    else return TB
+  unifyTypes t1 t2 TB
+  return TB
 checkExpr (EOr expr1 expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
-  if t1 /= TB || t2 /= TB
-    then throwError defaultErr
-    else return TB
+  unifyTypes t1 t2 TB
+  return TB
