@@ -67,7 +67,6 @@ evalExpr expr = runReader (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty
 interpretExpr :: Expr -> SS Value
 interpretExpr (EVar (Ident var)) = do
   env <- ask
-  -- TODO: think about turning this into exceptions
   let l = fromMaybe (error "undefined variable") (M.lookup var env)
   (st,_)  <- get
   return $ fromMaybe (error "undefined location") (M.lookup l st)
