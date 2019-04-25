@@ -4,6 +4,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe(fromMaybe, isNothing)
 import AbsOstaczGr
+import Debug.Trace
 import qualified Data.Map as M
 import ErrM
 import Control.Monad.Except
@@ -17,6 +18,7 @@ transType :: Type -> Types
 transType TInt = TI
 transType TBool = TB
 transType TStr = TS
+transType TVoid = TV
 
 isInEnv :: Ident -> S Bool
 isInEnv (Ident x) = do
@@ -45,12 +47,12 @@ checkExpr (Not b) = do
   t <- checkExpr b
   case t of
     TB -> return TB
-    _ -> throwError defaultErr
+    _ -> trace ("error in Not " ++ show b) (throwError defaultErr)
 checkExpr (Neg x) = do
   t <- checkExpr x
   case t of
     TI -> return TI
-    _ -> throwError defaultErr
+    _ -> trace ("error in Neg: ") $ throwError defaultErr
 checkExpr (EMul expr1 op expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
