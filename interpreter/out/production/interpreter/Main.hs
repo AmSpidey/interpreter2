@@ -8,10 +8,11 @@ import System.Exit ( exitFailure, exitSuccess )
 
 import LexOstaczGr
 import ParOstaczGr
-import SkelOstaczGr
+import TypeChecker
+import Interpreter
 import PrintOstaczGr
 import AbsOstaczGr
-
+import PreProcessing
 
 
 
@@ -39,8 +40,9 @@ run v p s = let ts = myLLexer s in case p ts of
            Ok  tree -> do putStrLn "\nParse Successful!"
                           showTree v tree
                           putStrLn "*******************"
-                          putStrLn (show (evalExpr (treeToExp tree)))
+                          --putStrLn (show (evalExpr (treeToExp tree)))
                           putStrLn "***************"
+                          putStrLn ("typechecker result: " ++ show (checkProgram (preProcess tree)))
 
                           exitSuccess
 

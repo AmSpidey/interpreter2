@@ -52,7 +52,7 @@ checkExpr (Neg x) = do
   t <- checkExpr x
   case t of
     TI -> return TI
-    _ -> trace ("error in Neg: ") $ throwError defaultErr
+    _ -> trace "error in Neg: " $ throwError defaultErr
 checkExpr (EMul expr1 op expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2

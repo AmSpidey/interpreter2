@@ -9,7 +9,7 @@ import System.Exit ( exitFailure, exitSuccess )
 import LexOstaczGr
 import ParOstaczGr
 import TypeChecker
-import SkelOstaczGr
+import Interpreter
 import PrintOstaczGr
 import AbsOstaczGr
 import PreProcessing

@@ -1,1 +1,9 @@
-void main() {~ ;}
+void main() {int x = 5 ;
+x = 10;
+x = 10 + 2 + 3;
+boolean y = (5 == 5);
+boolean z = (4 == 3) && y;
+if (z) {
+~3;
+}
+}

@@ -39,6 +39,7 @@ preDeclFunctions (FnDef t (Ident f) args block:funcs) env = do
     then preDeclFunctions funcs (M.insert f (typeFromArgs args (transType t)) env)
     else trace ("error in preDeclFunctions") $ throwError defaultErr
 
+-- TODO: check for void arguments. Is it a bug or a feature?
 typeFromArgs :: [Arg] -> Types -> Types
 typeFromArgs [] t = t
 typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t

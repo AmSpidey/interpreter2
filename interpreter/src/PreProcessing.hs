@@ -5,7 +5,7 @@ import Simplified
 import Debug.Trace
 
 preProcess :: Program -> Program
-preProcess (Prog t) = (Prog (fmap preTopDef t))
+preProcess (Prog t) = Prog (fmap preTopDef t)
 
 preTopDef :: TopDef -> TopDef
 preTopDef (FnDef t x args b) = FnDef t x args (preBlock b)

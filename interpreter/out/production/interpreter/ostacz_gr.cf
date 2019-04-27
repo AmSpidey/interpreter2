@@ -47,7 +47,7 @@ Cond.      Stmt ::= "if" "(" Expr ")" Stmt  ;
 
 CondElse.  Stmt ::= "if" "(" Expr ")" Stmt "else" Stmt  ;
 
-Subsection. Stmt ::= "@_" Ident Block ;
+Subsection. Stmt ::= "@_" Ident Block ; -- nie lepiej zrobić Stmt?
 
 SubsectionPaid. Stmt ::= "@_" Ident Expr Block ;
 
@@ -59,7 +59,7 @@ Earn. Stmt ::= "earn" Expr ;
 
 RepeatXTimes. Stmt ::= "repeat" Expr "times" ;
 
-SExp.      Stmt ::= Expr  ";" ;
+SExp.      Stmt ::= Expr  ";" ; -- PO CHUJ MI TO
 
 -- Types --
 
