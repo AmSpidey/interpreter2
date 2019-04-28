@@ -9,7 +9,7 @@ import ErrM
 import qualified Data.Map as M
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, fromJust)
 import Control.Monad.Cont
 import Control.Monad.Except
 
@@ -75,6 +75,21 @@ type Interpretation a = Maybe a
 evalBlock :: Block -> SS Store
 evalBlock b = return (M.empty, 0)
 
+decVar :: Ident -> SS a -> SS a
+decVar v g = local (M.insert newloc v) (g)
+
+setVar :: Ident -> Expr -> SS a -> SS a
+setVar v e g = do
+  val <- interpretExpr e
+  env <- ask
+  let l = fromJust (M.lookup v env)
+  (st,_) <- get
+  local (M.insert )
+
+-- TODO: in typechecker check if the expression is variable!
+--evalFunc :: ValueT -> [Expr] -> SS Store
+--evalFunc (Func ((ByVal v):args) _) (e:expr) = decVar v evalFunc args expr
+
 evalExpr :: Expr -> ValueT
 evalExpr expr = runExcept (runReaderT (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty)
 
@@ -136,7 +151,14 @@ interpretExpr (EOr expr1 expr2) = do
   v2 <- getBool <$> interpretExpr expr2
   return $ ValB $ v1 || v2
 
-interpretExpr (EApp func p:pass) = local() (evalBlock b)
+{-interpretExpr (EApp func p:pass) = do
+  env <- ask
+  let l = fromJust (M.lookup func env)
+  (st, _) <- get
+  let f = fromJust (M.lookup l st)-}
+
+
+
 
 transIdent :: Ident -> Result
 transIdent x = case x of

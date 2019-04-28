@@ -13,7 +13,6 @@ import Control.Monad(when)
 import Control.Monad.Reader
 import Control.Monad.State
 
--- TODO: change into a function of another type, f.e returning bool, catch exception
 -- TODO: check for no return statement in the function
 --handler :: S()
 --handler =
@@ -59,8 +58,6 @@ declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
 declFromArgs (ArgByVal a x:args) = concatBlocks (BlockStmt [PreDecl a x]) (declFromArgs args)
 declFromArgs (ArgByVar a x:args) = concatBlocks (BlockStmt [PreDecl a x]) (declFromArgs args)
-
--- TODO: think of deleting sections that do nothing. Or maybe don't, because easier to maintain?
 
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt []) = return ()
