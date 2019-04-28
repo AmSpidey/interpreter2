@@ -13,10 +13,6 @@ import Control.Monad(when)
 import Control.Monad.Reader
 import Control.Monad.State
 
--- TODO: check for no return statement in the function
---handler :: S()
---handler =
-
 checkProgram :: Program -> String
 checkProgram (Prog tops) =
   trace "run check Program" $

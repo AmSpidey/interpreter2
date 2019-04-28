@@ -20,8 +20,12 @@ failure x = Bad $ "Undefined case: " ++ show x
 
 --TODO: pass by variable
 
-data ValueT = ValInt Integer | ValS String | ValB Bool | Func [ValueArg] ValueT Block deriving (Ord, Eq, Show)
+data ValueT = ValInt Integer | ValS String | ValB Bool deriving (Ord, Eq, Show)
+data FuncVal = Func [ValueArg] ValueT Block
+data Value = FuncVal | ValueT
 data ValueArg = ByVar ValueT | ByVal ValueT
+
+
 
 getBool :: ValueT -> Bool
 getBool (ValB v) = v
@@ -32,7 +36,7 @@ type Loc = Int
 type Env = M.Map String Loc
 
 -- state and next free location
-type Mem = M.Map Loc ValueT
+type Mem = M.Map Loc Value
 type Store = (Mem, Loc)
 
 --TODO: change into something with exceptions. + how to store functions?
@@ -76,21 +80,23 @@ evalBlock :: Block -> SS Store
 evalBlock b = return (M.empty, 0)
 
 decVar :: Ident -> SS a -> SS a
-decVar v g = local (M.insert newloc v) (g)
+decVar (Ident v) g = do
+  l <- newloc
+  local (M.insert v l) g
 
 setVar :: Ident -> Expr -> SS a -> SS a
-setVar v e g = do
+setVar (Ident v) e g = do
   val <- interpretExpr e
   env <- ask
   let l = fromJust (M.lookup v env)
   (st,_) <- get
-  local (M.insert )
+  local (M.insert l, val) g
 
 -- TODO: in typechecker check if the expression is variable!
 --evalFunc :: ValueT -> [Expr] -> SS Store
 --evalFunc (Func ((ByVal v):args) _) (e:expr) = decVar v evalFunc args expr
 
-evalExpr :: Expr -> ValueT
+evalExpr :: Expr -> Value
 evalExpr expr = runExcept (runReaderT (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty)
 
 interpretExpr :: Expr -> SS ValueT
