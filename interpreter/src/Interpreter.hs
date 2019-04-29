@@ -18,16 +18,14 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
---TODO: pass by variable
+-- TODO: pass by variable
+data Value = ValInt Integer | ValS String | ValB Bool | ValV | Func [ValueArg] Env Block deriving (Ord, Eq, Show)
 
-data ValueT = ValInt Integer | ValS String | ValB Bool deriving (Ord, Eq, Show)
-data FuncVal = Func [ValueArg] ValueT Block
-data Value = FuncVal | ValueT
-data ValueArg = ByVar ValueT | ByVal ValueT
+data ValueArg = ByVar Ident | ByVal Ident deriving (Ord, Eq, Show)
 
+data Passed = Val Value | Var Loc
 
-
-getBool :: ValueT -> Bool
+getBool :: Value -> Bool
 getBool (ValB v) = v
 
 type Loc = Int
@@ -39,8 +37,7 @@ type Env = M.Map String Loc
 type Mem = M.Map Loc Value
 type Store = (Mem, Loc)
 
---TODO: change into something with exceptions. + how to store functions?
---type SS a = StateT Store (Reader Env) a
+-- TODO: change into something with exceptions. + how to store functions?
 type SS a = StateT Store (ReaderT Env (Except String)) a
 
 -- reserving new location
@@ -54,19 +51,35 @@ modifyMem :: (Mem -> Mem) -> SS ()
 modifyMem f =
   modify (\(st,l) -> (f st,l))
 
-instance Num ValueT where
+inLocal :: Env -> SS a -> SS a
+inLocal locEnv f = local (const locEnv) f
+
+decVar :: Ident -> SS a -> SS a
+decVar (Ident v) g = do
+  l <- newloc
+  local (M.insert v l) g
+
+setVar :: Ident -> Value -> SS a -> SS a
+setVar (Ident v) val g = do
+  env <- ask
+  let l = fromJust (M.lookup v env)
+  (st, ml) <- get
+  put (M.insert l val st, ml)
+  g
+
+instance Num Value where
   abs (ValInt a) = ValInt (abs a)
   signum (ValInt a) = ValInt (signum a)
   fromInteger = ValInt
   ValInt a + ValInt b = ValInt $ a + b
   ValInt a - ValInt b = ValInt $ a - b
   ValInt a * ValInt b = ValInt $ a * b
-instance Real ValueT where
+instance Real Value where
   toRational (ValInt a) = toRational a
-instance Enum ValueT where
+instance Enum Value where
   toEnum a = ValInt (toEnum a)
   fromEnum (ValInt a) = fromEnum a
-instance Integral ValueT where
+instance Integral Value where
   toInteger (ValInt a) = a
   rem (ValInt a) (ValInt b)= ValInt $ rem a b
   mod (ValInt a) (ValInt b) = ValInt $ mod a b
@@ -76,31 +89,64 @@ type Interpretation a = Maybe a
 
 -- TODO: if you reach end of a Block with no return statement, return Exception
 
-evalBlock :: Block -> SS Store
-evalBlock b = return (M.empty, 0)
+{--evalStmt :: Stmt -> SS (Maybe Value)
+evalStmt Empty = return Nothing
 
-decVar :: Ident -> SS a -> SS a
-decVar (Ident v) g = do
-  l <- newloc
-  local (M.insert v l) g
+evalStmt (BStmt b) = local (id) (evalBlock b)
 
-setVar :: Ident -> Expr -> SS a -> SS a
-setVar (Ident v) e g = do
+evalStmt (PreDecl t v) =-}
+
+evalBlock :: Block -> SS (Maybe Value)
+evalBlock b = return $ Just (ValInt 2)
+
+evalBlock (BlockStmt (Empty:stmts)) = evalBlock (BlockStmt stmts)
+
+evalBlock (BlockStmt (BStmt b:stms)) = local (id) (evalBlock b)
+
+evalBlock (BlockStmt (((PreDecl _ v)):stmts)) = decVar v (evalBlock (BlockStmt stmts))
+
+evalBlock (BlockStmt (((Ass v e)):stmts)) = do
   val <- interpretExpr e
-  env <- ask
-  let l = fromJust (M.lookup v env)
-  (st,_) <- get
-  local (M.insert l, val) g
+  setVar v val (evalBlock (BlockStmt stmts))
+
+evalBlock (BlockStmt (((Ass v e)):stmts)) = do
+  val <- interpretExpr e
+  setVar v val (evalBlock (BlockStmt stmts))
 
 -- TODO: in typechecker check if the expression is variable!
---evalFunc :: ValueT -> [Expr] -> SS Store
---evalFunc (Func ((ByVal v):args) _) (e:expr) = decVar v evalFunc args expr
+-- TODO: remember to call in a local env around the function
+evalFunc :: Value -> [Passed] -> SS (Value)
+evalFunc (Func [] env block) [] = do
+  ret <- evalBlock block
+  case ret of
+    Nothing -> throwError ("no return statement in the end of function")
+    Just r -> return r
 
-evalExpr :: Expr -> Value
-evalExpr expr = runExcept (runReaderT (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty)
+evalFunc (Func ((ByVal v):args) env block ) ((Val p):expr) = decVar v $ setVar v p $ evalFunc (Func args env block) expr
 
-interpretExpr :: Expr -> SS ValueT
+evalFunc (Func ((ByVar (Ident v)):args) env block ) ((Var l):expr) = local (M.insert v l) (evalFunc (Func args env block) expr)
 
+eval _ _ = error ("non-matching argument to function. Possible fault with TypeChecker")
+
+-- TODO: make it work with Either
+-- evalExpr :: Expr -> Value
+--evalExpr expr = runExcept (runReaderT (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty)
+
+preArgs :: [Expr] -> [ValueArg] -> SS [Passed]
+preArgs [] [] = return []
+
+preArgs ((EVar (Ident v)):e) ((ByVar x):args) = do
+  env <- ask
+  let l = fromJust (M.lookup v env)
+  res <- preArgs e args
+  return( ([Var l])  ++ res)
+
+preArgs (e:expr) ((ByVar x):args) = do
+  val <- interpretExpr e
+  res <- preArgs expr args
+  return( ([Val val])  ++ res)
+
+interpretExpr :: Expr -> SS Value
 interpretExpr (EVar (Ident var)) = do
   env <- ask
   let l = fromMaybe (error "undefined variable") (M.lookup var env)
@@ -157,14 +203,13 @@ interpretExpr (EOr expr1 expr2) = do
   v2 <- getBool <$> interpretExpr expr2
   return $ ValB $ v1 || v2
 
-{-interpretExpr (EApp func p:pass) = do
+interpretExpr (EApp (Ident func) pass) = do
   env <- ask
   let l = fromJust (M.lookup func env)
   (st, _) <- get
-  let f = fromJust (M.lookup l st)-}
-
-
-
+  let f@(Func args env block) = fromJust (M.lookup l st)
+  toPass <- preArgs pass args
+  local (const env) (evalFunc f toPass)
 
 transIdent :: Ident -> Result
 transIdent x = case x of

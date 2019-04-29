@@ -17,4 +17,9 @@ preStmt :: Stmt -> [Stmt]
 preStmt (Decl t []) = [Empty]
 preStmt (Decl t (NoInit x:items)) = PreDecl t x : preStmt (Decl t items)
 preStmt (Decl t (Init x expr:items)) = PreDecl t x : Ass x expr : preStmt (Decl t items)
+
+preStmt (Incr v) = [(Ass v ((EAdd (EVar v) Plus (ELitInt 1))))]
+
+preStmt (Decr v) = [(Ass v ((EAdd (EVar v) Minus (ELitInt 1))))]
+
 preStmt stmt = [stmt]

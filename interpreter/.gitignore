@@ -3,4 +3,5 @@ interpreter.cabal
 out
 src/*.hi
 src/*.o
+.idea
 *~
