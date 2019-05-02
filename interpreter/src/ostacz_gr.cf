@@ -4,11 +4,13 @@ token BVAL ({"true"}|{"false"});
 
 entrypoints Program ;
 
-Prog.   Program ::= [TopDef] ;
+Prog.   Program ::= [Decl] ;
 
-FnDef.	   TopDef ::= Type Ident "(" [Arg] ")" Block ;
+FnDef.	   Decl1 ::= Type Ident "(" [Arg] ")" Block ;
 
-separator nonempty TopDef "" ;
+VarDecl.    Decl2 ::= Type [Item] ";" ;
+
+separator nonempty Decl "" ;
 
 ArgByVal. 	   Arg ::= Type Ident;
 
@@ -25,7 +27,7 @@ Empty.     Stmt ::= ";" ;
 
 BStmt.     Stmt ::= Block ;
 
-Decl.      Stmt ::= Type [Item] ";" ;
+DeclStmt.      Stmt ::= Decl ;
 
 NoInit.    Item ::= Ident ; 
 
@@ -47,7 +49,7 @@ Cond.      Stmt ::= "if" "(" Expr ")" Stmt  ;
 
 CondElse.  Stmt ::= "if" "(" Expr ")" Stmt "else" Stmt  ;
 
-Subsection. Stmt ::= "@_" Ident Block ; -- nie lepiej zrobić Stmt?
+Subsection. Stmt ::= "@_" Ident Block ;
 
 SubsectionPaid. Stmt ::= "@_" Ident Expr Block ;
 
@@ -59,7 +61,9 @@ Earn. Stmt ::= "earn" Expr ;
 
 RepeatXTimes. Stmt ::= "repeat" Expr "times" ;
 
-SExp.      Stmt ::= Expr  ";" ; -- PO CHUJ MI TO
+SExp.      Stmt ::= Expr  ";" ;
+
+Show.      Stmt ::= "show" Expr ;
 
 -- Types --
 

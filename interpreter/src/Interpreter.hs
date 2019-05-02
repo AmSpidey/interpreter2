@@ -9,7 +9,7 @@ import ErrM
 import qualified Data.Map as M
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe(fromMaybe, fromJust)
+import Data.Maybe(fromMaybe, fromJust, isNothing)
 import Control.Monad.Cont
 import Control.Monad.Except
 
@@ -18,8 +18,7 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
--- TODO: pass by variable
-data Value = ValInt Integer | ValS String | ValB Bool | ValV | Func [ValueArg] Env Block deriving (Ord, Eq, Show)
+data Value = ValInt Integer | ValS String | ValB Bool | ValV | LF LoopFlag | Func [ValueArg] Env Block deriving (Ord, Eq, Show)
 
 data ValueArg = ByVar Ident | ByVal Ident deriving (Ord, Eq, Show)
 
@@ -27,6 +26,11 @@ data Passed = Val Value | Var Loc
 
 getBool :: Value -> Bool
 getBool (ValB v) = v
+getBool _ = error ("error in typeChecker for bool")
+
+getInt :: Value -> Integer
+getInt (ValInt v) = v
+getInt _ = error ("error in typeChecker for integer")
 
 type Loc = Int
 
@@ -35,9 +39,11 @@ type Env = M.Map String Loc
 
 -- state and next free location
 type Mem = M.Map Loc Value
+
+data LoopFlag = FIN | REP Integer deriving (Ord, Eq, Show)
+
 type Store = (Mem, Loc)
 
--- TODO: change into something with exceptions. + how to store functions?
 type SS a = StateT Store (ReaderT Env (Except String)) a
 
 -- reserving new location
@@ -87,21 +93,29 @@ instance Integral Value where
 
 type Interpretation a = Maybe a
 
--- TODO: if you reach end of a Block with no return statement, return Exception
+evalLoop :: Block -> Integer -> SS (Maybe Value)
+evalLoop (BlockStmt ((Subsection i b):stmts)) 0 = evalBlock (BlockStmt stmts)
+evalLoop (BlockStmt ((Subsection i b):stmts)) x = do
+  res <- evalBlock b
+  case res of
+    Nothing -> evalLoop (BlockStmt ((Subsection i b):stmts)) (x-1)
+    Just (LF FIN) -> evalBlock (BlockStmt stmts)
+    Just (LF (REP y)) -> evalLoop (BlockStmt ((Subsection i b):stmts)) (x+y)
+    _ -> return res
 
-{--evalStmt :: Stmt -> SS (Maybe Value)
-evalStmt Empty = return Nothing
-
-evalStmt (BStmt b) = local (id) (evalBlock b)
-
-evalStmt (PreDecl t v) =-}
+catchRet :: (Maybe Value) -> SS (Maybe Value)-> SS (Maybe Value)
+catchRet r g = if isNothing r then g
+  else return r
 
 evalBlock :: Block -> SS (Maybe Value)
-evalBlock b = return $ Just (ValInt 2)
+
+evalBlock (BlockStmt ([])) = return Nothing
 
 evalBlock (BlockStmt (Empty:stmts)) = evalBlock (BlockStmt stmts)
 
-evalBlock (BlockStmt (BStmt b:stms)) = local (id) (evalBlock b)
+evalBlock (BlockStmt (BStmt b:stms)) = do
+  res <- (evalBlock b)
+  catchRet res (evalBlock (BlockStmt stms))
 
 evalBlock (BlockStmt (((PreDecl _ v)):stmts)) = decVar v (evalBlock (BlockStmt stmts))
 
@@ -109,24 +123,57 @@ evalBlock (BlockStmt (((Ass v e)):stmts)) = do
   val <- interpretExpr e
   setVar v val (evalBlock (BlockStmt stmts))
 
-evalBlock (BlockStmt (((Ass v e)):stmts)) = do
+evalBlock (BlockStmt (((Ret e)):stmts)) = do
   val <- interpretExpr e
-  setVar v val (evalBlock (BlockStmt stmts))
+  return (Just val)
+
+evalBlock (BlockStmt (((VRet)):stmts)) = do
+  return (Just ValV)
+
+evalBlock (BlockStmt (((Cond e s)):stmts)) = do
+  val <- interpretExpr e
+  let cond = getBool val
+  if cond then do
+    res <- evalBlock (BlockStmt [s])
+    catchRet res (evalBlock(BlockStmt stmts))
+  else evalBlock (BlockStmt stmts)
+
+evalBlock (BlockStmt (((CondElse e s1 s2)):stmts)) = do
+  val <- interpretExpr e
+  let cond = getBool val
+  if cond then evalBlock (BlockStmt [s1])
+  else evalBlock (BlockStmt [s2])
+
+evalBlock (BlockStmt (((SExp e)):stmts)) = do
+  val <- interpretExpr e
+  evalBlock (BlockStmt stmts)
+
+evalBlock (BlockStmt ((Subsection i b):stmts)) = evalLoop (BlockStmt ((Subsection i b):stmts)) 1
+
+evalBlock (BlockStmt ((RepeatXTimes expr):stmts)) = do
+  val <- interpretExpr expr
+  let int = getInt val
+  return (Just (LF (REP int)))
+
+evalBlock (BlockStmt ((Repeat):stmts)) = evalBlock (BlockStmt ((RepeatXTimes (ELitInt 1)):stmts))
+
+evalBlock (BlockStmt ((Finish):stmts)) = do
+  return (Just (LF (FIN)))
 
 -- TODO: in typechecker check if the expression is variable!
--- TODO: remember to call in a local env around the function
 evalFunc :: Value -> [Passed] -> SS (Value)
 evalFunc (Func [] env block) [] = do
   ret <- evalBlock block
   case ret of
     Nothing -> throwError ("no return statement in the end of function")
+    Just (LF _) -> throwError ("repeat or finish statement not in the section")
     Just r -> return r
 
 evalFunc (Func ((ByVal v):args) env block ) ((Val p):expr) = decVar v $ setVar v p $ evalFunc (Func args env block) expr
 
 evalFunc (Func ((ByVar (Ident v)):args) env block ) ((Var l):expr) = local (M.insert v l) (evalFunc (Func args env block) expr)
 
-eval _ _ = error ("non-matching argument to function. Possible fault with TypeChecker")
+evalFunc _ _ = error ("non-matching argument to function. Possible fault with TypeChecker")
 
 -- TODO: make it work with Either
 -- evalExpr :: Expr -> Value

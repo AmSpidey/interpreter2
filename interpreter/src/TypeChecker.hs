@@ -40,6 +40,8 @@ typeFromArgs [] t = t
 typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
 typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
 
+-- TODO: check for repeating arguments in functions
+-- TODO: reserve names for functions: print, main
 checkTopDef :: TopDef -> S ()
 checkTopDef (FnDef t (Ident f) args block) = do
   env <- ask

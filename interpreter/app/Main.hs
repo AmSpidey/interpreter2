@@ -43,6 +43,8 @@ run v p s = let ts = myLLexer s in case p ts of
                           --putStrLn (show (evalExpr (treeToExp tree)))
                           putStrLn "***************"
                           putStrLn ("typechecker result: " ++ show (checkProgram (preProcess tree)))
+                          putStrLn("******************")
+                          --putSt
 
                           exitSuccess
 
