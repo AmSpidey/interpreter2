@@ -89,11 +89,12 @@ instance Print BVAL where
 
 instance Print Program where
   prt i e = case e of
-    Prog topdefs -> prPrec i 0 (concatD [prt 0 topdefs])
+    Prog decls -> prPrec i 0 (concatD [prt 0 decls])
 
-instance Print TopDef where
+instance Print Decl where
   prt i e = case e of
     FnDef type_ id args block -> prPrec i 0 (concatD [prt 0 type_, prt 0 id, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 block])
+    VarDecl type_ items -> prPrec i 0 (concatD [prt 0 type_, prt 0 items, doc (showString ";")])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print Arg where
@@ -111,7 +112,7 @@ instance Print Stmt where
   prt i e = case e of
     Empty -> prPrec i 0 (concatD [doc (showString ";")])
     BStmt block -> prPrec i 0 (concatD [prt 0 block])
-    Decl type_ items -> prPrec i 0 (concatD [prt 0 type_, prt 0 items, doc (showString ";")])
+    DeclStmt decl -> prPrec i 0 (concatD [prt 0 decl])
     Ass id expr -> prPrec i 0 (concatD [prt 0 id, doc (showString "="), prt 0 expr, doc (showString ";")])
     Incr id -> prPrec i 0 (concatD [prt 0 id, doc (showString "++"), doc (showString ";")])
     Decr id -> prPrec i 0 (concatD [prt 0 id, doc (showString "--"), doc (showString ";")])
@@ -126,11 +127,11 @@ instance Print Stmt where
     Earn expr -> prPrec i 0 (concatD [doc (showString "earn"), prt 0 expr])
     RepeatXTimes expr -> prPrec i 0 (concatD [doc (showString "repeat"), prt 0 expr, doc (showString "times")])
     SExp expr -> prPrec i 0 (concatD [prt 0 expr, doc (showString ";")])
+    Show expr -> prPrec i 0 (concatD [doc (showString "show"), prt 0 expr])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print Item where
   prt i e = case e of
-    NoInit id -> prPrec i 0 (concatD [prt 0 id])
     Init id expr -> prPrec i 0 (concatD [prt 0 id, doc (showString "="), prt 0 expr])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])

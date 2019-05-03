@@ -117,7 +117,7 @@ evalBlock (BlockStmt (BStmt b:stms)) = do
   res <- (evalBlock b)
   catchRet res (evalBlock (BlockStmt stms))
 
-evalBlock (BlockStmt (((PreDecl _ v)):stmts)) = decVar v (evalBlock (BlockStmt stmts))
+--evalBlock (BlockStmt (((PreDecl _ v)):stmts)) = decVar v (evalBlock (BlockStmt stmts))
 
 evalBlock (BlockStmt (((Ass v e)):stmts)) = do
   val <- interpretExpr e
@@ -266,10 +266,11 @@ transBVAL x = case x of
   BVAL string -> failure x
 transProgram :: Program -> Result
 transProgram x = case x of
-  Prog topdefs -> failure x
-transTopDef :: TopDef -> Result
-transTopDef x = case x of
+  Prog decls -> failure x
+transDecl :: Decl -> Result
+transDecl x = case x of
   FnDef type_ ident args block -> failure x
+  VarDecl type_ items -> failure x
 transArg :: Arg -> Result
 transArg x = case x of
   ArgByVal type_ ident -> failure x
@@ -281,7 +282,7 @@ transStmt :: Stmt -> Result
 transStmt x = case x of
   Empty -> failure x
   BStmt block -> failure x
-  Decl type_ items -> failure x
+  DeclStmt decl -> failure x
   Ass ident expr -> failure x
   Incr ident -> failure x
   Decr ident -> failure x
@@ -296,9 +297,9 @@ transStmt x = case x of
   Earn expr -> failure x
   RepeatXTimes expr -> failure x
   SExp expr -> failure x
+  Show expr -> failure x
 transItem :: Item -> Result
 transItem x = case x of
-  NoInit ident -> failure x
   Init ident expr -> failure x
 transType :: Type -> Result
 transType x = case x of

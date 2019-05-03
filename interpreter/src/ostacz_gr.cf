@@ -6,9 +6,9 @@ entrypoints Program ;
 
 Prog.   Program ::= [Decl] ;
 
-FnDef.	   Decl1 ::= Type Ident "(" [Arg] ")" Block ;
+FnDef.	   Decl ::= Type Ident "(" [Arg] ")" Block ;
 
-VarDecl.    Decl2 ::= Type [Item] ";" ;
+VarDecl.    Decl ::= Type [Item] ";" ;
 
 separator nonempty Decl "" ;
 
@@ -28,8 +28,6 @@ Empty.     Stmt ::= ";" ;
 BStmt.     Stmt ::= Block ;
 
 DeclStmt.      Stmt ::= Decl ;
-
-NoInit.    Item ::= Ident ; 
 
 Init.      Item ::= Ident "=" Expr ;
 

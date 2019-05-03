@@ -16,23 +16,35 @@ import Control.Monad.State
 checkProgram :: Program -> String
 checkProgram (Prog tops) =
   trace "run check Program" $
-  case runExcept (runReaderT (checkTopDefinitions tops) M.empty) of
+  case runExcept (runReaderT (checkDecls tops) M.empty) of
     Left e -> e
     Right _ -> "went ok"
 
-checkTopDefinitions :: [TopDef] -> S()
-checkTopDefinitions t = do
-  pre <- preDeclFunctions t M.empty
-  local (M.union pre) (mapM_ checkTopDef t)
+checkDecls :: S a -> [Decl] -> S()
+checkDecls f [] = f
+checkDecls f (d:decls) = do
+  preDecl (checkDecls decls) d
+  --mapM_ checkTopDef (d:decls)
+  --local (M.union pre) (mapM_ checkTopDef t)
 
+-- TODO: create nicer errors than just defaultErr.
 -- TODO: simplify using a folding function
-preDeclFunctions :: [TopDef] -> TypeEnv -> S TypeEnv
-preDeclFunctions [] env = return env
-preDeclFunctions (FnDef t (Ident f) args block:funcs) env = do
+preDecl :: S a -> Decl -> S a
+preDecl g (FnDef t (Ident f) args block) = do
+  env <- ask
   let mt = M.lookup f env
   if isNothing mt
-    then preDeclFunctions funcs (M.insert f (typeFromArgs args (transType t)) env)
-    else trace ("error in preDeclFunctions") $ throwError defaultErr
+    then local ((M.insert f (typeFromArgs args (transType t)))) (g)
+    else trace ("repeating function names") $ throwError defaultErr
+preDecl g ((VarDecl t (v:vars))) env = declVar t v (preDecl g (VarDecl t (vars)))
+
+declVar :: Type -> Item -> S a -> S a
+declVar t (Init (Ident v) expr) g = do
+  redecl <- isInEnv (Ident v)
+  if redecl
+    then trace ("redeclaring var") $ throwError defaultErr
+    else local (M.insert (v) (transType t)) (g)
+
 
 -- TODO: check for void arguments. Is it a bug or a feature?
 typeFromArgs :: [Arg] -> Types -> Types
@@ -40,9 +52,9 @@ typeFromArgs [] t = t
 typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
 typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
 
--- TODO: check for repeating arguments in functions
+-- TODO: check for repeating arguments in functions (SET?)
 -- TODO: reserve names for functions: print, main
-checkTopDef :: TopDef -> S ()
+checkTopDef :: Decl -> S ()
 checkTopDef (FnDef t (Ident f) args block) = do
   env <- ask
   let mt = M.lookup f env
@@ -54,12 +66,17 @@ checkTopDef (FnDef t (Ident f) args block) = do
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
-declFromArgs (ArgByVal a x:args) = concatBlocks (BlockStmt [PreDecl a x]) (declFromArgs args)
-declFromArgs (ArgByVar a x:args) = concatBlocks (BlockStmt [PreDecl a x]) (declFromArgs args)
+declFromArgs (ArgByVal t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [(v (defVal t))])]) (declFromArgs args)
+declFromArgs (ArgByVar t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [(v (defVal t))])]) (declFromArgs args)
+
+defVal :: Type -> Expr
+defVal TStr = EString ""
+defVal TInt = ELitInt 0
+defVal TBool = ELitBool "false"
 
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt []) = return ()
-checkBlock (BlockStmt (PreDecl t (Ident v):bs)) = do
+checkBlock (BlockStmt (DeclStmt decl)) = do
   redecl <- isInEnv (Ident v)
   if redecl
     then trace ("error in checkBlock") $ throwError defaultErr

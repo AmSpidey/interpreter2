@@ -9,10 +9,10 @@ module AbsOstaczGr where
 
 newtype Ident = Ident String deriving (Eq, Ord, Show, Read)
 newtype BVAL = BVAL String deriving (Eq, Ord, Show, Read)
-data Program = Prog [TopDef]
+data Program = Prog [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data TopDef = FnDef Type Ident [Arg] Block
+data Decl = FnDef Type Ident [Arg] Block | VarDecl Type [Item]
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgByVal Type Ident | ArgByVar Type Ident
@@ -24,8 +24,7 @@ data Block = BlockStmt [Stmt]
 data Stmt
     = Empty
     | BStmt Block
-    | Decl Type [Item]
-    | PreDecl Type Ident
+    | DeclStmt Decl
     | Ass Ident Expr
     | Incr Ident
     | Decr Ident
@@ -40,9 +39,10 @@ data Stmt
     | Earn Expr
     | RepeatXTimes Expr
     | SExp Expr
+    | Show Expr
   deriving (Eq, Ord, Show, Read)
 
-data Item = NoInit Ident | Init Ident Expr
+data Item = Init Ident Expr
   deriving (Eq, Ord, Show, Read)
 
 data Type = TInt | TStr | TBool | TVoid
