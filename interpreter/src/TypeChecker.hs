@@ -38,11 +38,13 @@ preDecl g ((FnDef t (Ident f) args block):decls) = do
   if isNothing mt
     then local ((M.insert f (typeFromArgs args (transType t)))) (preDecl g decls)
     else trace ("repeating function names") $ throwError defaultErr
-preDecl g ((VarDecl t (v:vars)):decls) = declVars t (vars) (preDecl g decls)
+preDecl g ((VarDecl t (vars)):decls) = declVars t (vars) (preDecl g decls)
 --declVar t v (preDecl g ((VarDecl t (vars)):decls))
 
 declVar :: Type -> Item -> S a -> S a
 declVar t (Init (Ident v) expr) g = do
+  tE <- checkExpr expr
+  unifyTypes tE (transType t)
   redecl <- isInEnv (Ident v)
   if redecl
     then trace ("redeclaring var") $ throwError defaultErr
@@ -96,14 +98,17 @@ checkBlock (BlockStmt (Ass (Ident x) e:bs)) = do
   t1 <- checkExpr e
   t2 <- checkExpr (EVar (Ident x))
   unifyTypes t1 t2
+  checkBlock (BlockStmt bs)
 
 checkBlock (BlockStmt (Incr (Ident x):bs)) = do
   t <- checkExpr (EVar (Ident x))
   unifyTypes t TI
+  checkBlock (BlockStmt bs)
 
 checkBlock (BlockStmt (Decr (Ident x):bs)) = do
   t <- checkExpr (EVar (Ident x))
   unifyTypes t TI
+  checkBlock (BlockStmt bs)
 
 checkBlock (BlockStmt (Ret e:bs)) = do
   t <- checkExpr e
@@ -159,4 +164,5 @@ checkBlock (BlockStmt (RepeatXTimes expr:bs)) = do
 checkBlock (BlockStmt (SExp expr:bs)) = do
   t <- checkExpr expr
   checkBlock (BlockStmt bs)
+
 checkBlock (BlockStmt bs) = trace ("couldn't work with block: " ++ show bs) $ throwError fatalErr
