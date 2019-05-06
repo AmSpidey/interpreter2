@@ -16,27 +16,30 @@ import Control.Monad.State
 checkProgram :: Program -> String
 checkProgram (Prog tops) =
   trace "run check Program" $
-  case runExcept (runReaderT (checkDecls tops) M.empty) of
+  case runExcept (runReaderT (checkDecls ((return ())) tops) M.empty) of
     Left e -> e
     Right _ -> "went ok"
 
-checkDecls :: S a -> [Decl] -> S()
-checkDecls f [] = f
-checkDecls f (d:decls) = do
-  preDecl (checkDecls decls) d
+checkDecls :: S a -> [Decl] -> S a
+checkDecls f (decls) = trace "starting checkDecls" $ preDecl (do
+  mapM_ checkTopDef decls
+  f) decls
   --mapM_ checkTopDef (d:decls)
   --local (M.union pre) (mapM_ checkTopDef t)
 
 -- TODO: create nicer errors than just defaultErr.
 -- TODO: simplify using a folding function
-preDecl :: S a -> Decl -> S a
-preDecl g (FnDef t (Ident f) args block) = do
+-- TODO: possibly reverse args. Idk.
+preDecl :: S a -> [Decl] -> S a
+preDecl g [] = g
+preDecl g ((FnDef t (Ident f) args block):decls) = do
   env <- ask
   let mt = M.lookup f env
   if isNothing mt
-    then local ((M.insert f (typeFromArgs args (transType t)))) (g)
+    then local ((M.insert f (typeFromArgs args (transType t)))) (preDecl g decls)
     else trace ("repeating function names") $ throwError defaultErr
-preDecl g ((VarDecl t (v:vars))) env = declVar t v (preDecl g (VarDecl t (vars)))
+preDecl g ((VarDecl t (v:vars)):decls) = declVars t (vars) (preDecl g decls)
+--declVar t v (preDecl g ((VarDecl t (vars)):decls))
 
 declVar :: Type -> Item -> S a -> S a
 declVar t (Init (Ident v) expr) g = do
@@ -45,6 +48,9 @@ declVar t (Init (Ident v) expr) g = do
     then trace ("redeclaring var") $ throwError defaultErr
     else local (M.insert (v) (transType t)) (g)
 
+declVars :: Type -> [Item] -> S a -> S a
+declVars t ([]) f = f
+declVars t (v:vars) f = declVar t v (declVars t vars f)
 
 -- TODO: check for void arguments. Is it a bug or a feature?
 typeFromArgs :: [Arg] -> Types -> Types
@@ -63,24 +69,22 @@ checkTopDef (FnDef t (Ident f) args block) = do
     else local (M.insert "" (transType t)) funcWithDecls
   where
     funcWithDecls = checkBlock (concatBlocks (declFromArgs args) block)
+checkTopDef elseDef = return ()
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
-declFromArgs (ArgByVal t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [(v (defVal t))])]) (declFromArgs args)
-declFromArgs (ArgByVar t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [(v (defVal t))])]) (declFromArgs args)
+declFromArgs (ArgByVal t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [Init v (defVal t)])]) (declFromArgs args)
+declFromArgs (ArgByVar t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [Init v (defVal t)])]) (declFromArgs args)
 
 defVal :: Type -> Expr
 defVal TStr = EString ""
 defVal TInt = ELitInt 0
-defVal TBool = ELitBool "false"
+defVal TBool = ELitBool (BVAL "false")
 
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt []) = return ()
-checkBlock (BlockStmt (DeclStmt decl)) = do
-  redecl <- isInEnv (Ident v)
-  if redecl
-    then trace ("error in checkBlock") $ throwError defaultErr
-    else local (M.insert v (transType t)) (checkBlock (BlockStmt bs))
+
+checkBlock (BlockStmt ((DeclStmt decl):bs)) = checkDecls (checkBlock (BlockStmt bs)) [decl]
 
 checkBlock (BlockStmt (Empty:bs)) = checkBlock (BlockStmt bs)
 

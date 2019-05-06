@@ -1,6 +1,7 @@
-void main() {int x = 5 ;
-x = 10;
-x = 10 + 2 + 3;
+void main() {int o = 2;
+int koza = 5 ;
+koza = 10;
+koza = 10 + 2 + 3;
 boolean y = (5 == 5);
 boolean z = (4 == 3) && y;
 if (z) {

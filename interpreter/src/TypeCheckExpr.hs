@@ -12,7 +12,7 @@ import Control.Monad.Except
 data Types = TI | TB | TS | TV | Types :->: Types deriving (Eq, Show)
 
 unifyTypes :: Types -> Types -> S ()
-unifyTypes t1 t2 = when (t1 /= t2) $ throwError defaultErr
+unifyTypes t1 t2 = trace ("fail to unify" ++ show t1 ++ " " ++ show t2 ) $ when (t1 /= t2) $ throwError defaultErr
 
 transType :: Type -> Types
 transType TInt = TI
@@ -39,7 +39,7 @@ checkExpr :: Expr -> S Types
 checkExpr (EVar (Ident x)) = do
   env <- ask
   let mt = M.lookup x env
-  maybe (throwError defaultErr) return mt
+  maybe (trace ("fail to look up " ++ x) $ throwError defaultErr) return mt
 checkExpr (ELitInt _) = return TI
 checkExpr (ELitBool _) = return TB
 checkExpr (EString _) = return TS
