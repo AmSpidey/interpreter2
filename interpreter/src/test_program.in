@@ -1,6 +1,7 @@
 void main() {int koza = 5 ; koza = 10; koza = 10 + 2 + 3;
 boolean y = (5 == 5);
 boolean z = (4 == 3) && y;
+show koza;
 if (z) {
 ~3;
 }

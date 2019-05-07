@@ -15,6 +15,8 @@ import Control.Monad.Except
 
 type Result = Err String
 
+
+-- TODO: starting env has to have main! type int.
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
@@ -44,7 +46,7 @@ data LoopFlag = FIN | REP Integer deriving (Ord, Eq, Show)
 
 type Store = (Mem, Loc)
 
-type SS a = StateT Store (ReaderT Env (Except String)) a
+type SS a = StateT Store (ReaderT Env (ExceptT String IO)) a
 
 -- reserving new location
 newloc :: SS Loc
@@ -91,7 +93,33 @@ instance Integral Value where
   mod (ValInt a) (ValInt b) = ValInt $ mod a b
   quot (ValInt a) (ValInt b) = ValInt $ quot a b
 
+-- TODO: delete?
 type Interpretation a = Maybe a
+
+afterEval :: Program -> IO ()
+afterEval prog = runExceptT (runReaderT (evalStateT (evalProgram prog) (M.empty, 0)) M.empty)
+
+evalProgram :: Program -> SS Value
+evalProgram (Prog [d]) = evalDecl d (evalMain)
+evalProgram (Prog (d:decls)) = do
+  evalDecl d (evalProgram (Prog decls))
+
+evalMain :: SS Value
+evalMain = interpretExpr (EApp (Ident "main") [])
+
+processArgs :: [Arg] -> [ValueArg]
+processArgs [] = []
+processArgs (ArgByVal t v:args) = [ByVal v] ++ processArgs args
+processArgs (ArgByVar t v:args) = [ByVar v] ++ processArgs args
+
+evalDecl :: Decl -> SS a -> SS a
+evalDecl (FnDef t (f) args block) g = do
+  env <- ask
+  decVar f (setVar f (Func (processArgs args) env block) (g))
+evalDecl (VarDecl t []) g = g
+evalDecl (VarDecl t ((Init v e):items)) g = do
+  val <- interpretExpr e
+  decVar v (setVar v val (evalDecl (VarDecl t items) g))
 
 evalLoop :: Block -> Integer -> SS (Maybe Value)
 evalLoop (BlockStmt ((Subsection i b):stmts)) 0 = evalBlock (BlockStmt stmts)
@@ -111,13 +139,14 @@ evalBlock :: Block -> SS (Maybe Value)
 
 evalBlock (BlockStmt ([])) = return Nothing
 
+evalBlock (BlockStmt ((DeclStmt decls):stmts)) = do
+  evalDecl decls (evalBlock (BlockStmt stmts))
+
 evalBlock (BlockStmt (Empty:stmts)) = evalBlock (BlockStmt stmts)
 
 evalBlock (BlockStmt (BStmt b:stms)) = do
   res <- (evalBlock b)
   catchRet res (evalBlock (BlockStmt stms))
-
---evalBlock (BlockStmt (((PreDecl _ v)):stmts)) = decVar v (evalBlock (BlockStmt stmts))
 
 evalBlock (BlockStmt (((Ass v e)):stmts)) = do
   val <- interpretExpr e
@@ -159,6 +188,11 @@ evalBlock (BlockStmt ((Repeat):stmts)) = evalBlock (BlockStmt ((RepeatXTimes (EL
 
 evalBlock (BlockStmt ((Finish):stmts)) = do
   return (Just (LF (FIN)))
+
+evalBlock (BlockStmt ((Show expr):stmts)) = do
+  val <- interpretExpr expr
+  liftIO $ print (show val)
+  evalBlock (BlockStmt stmts)
 
 -- TODO: in typechecker check if the expression is variable!
 evalFunc :: Value -> [Passed] -> SS (Value)

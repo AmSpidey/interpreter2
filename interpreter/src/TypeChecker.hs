@@ -30,6 +30,7 @@ checkDecls f (decls) = trace "starting checkDecls" $ preDecl (do
 -- TODO: create nicer errors than just defaultErr.
 -- TODO: simplify using a folding function
 -- TODO: possibly reverse args. Idk.
+-- TODO: change to functions having to be declared BEFORE functions that uses them. Less complicated.
 preDecl :: S a -> [Decl] -> S a
 preDecl g [] = g
 preDecl g ((FnDef t (Ident f) args block):decls) = do
@@ -61,7 +62,7 @@ typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
 typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
 
 -- TODO: check for repeating arguments in functions (SET?)
--- TODO: reserve names for functions: print, main
+-- TODO: CHECK FOR MAIN.
 checkTopDef :: Decl -> S ()
 checkTopDef (FnDef t (Ident f) args block) = do
   env <- ask
@@ -162,6 +163,10 @@ checkBlock (BlockStmt (RepeatXTimes expr:bs)) = do
   checkBlock (BlockStmt bs)
 
 checkBlock (BlockStmt (SExp expr:bs)) = do
+  t <- checkExpr expr
+  checkBlock (BlockStmt bs)
+
+checkBlock (BlockStmt (Show expr:bs)) = do
   t <- checkExpr expr
   checkBlock (BlockStmt bs)
 

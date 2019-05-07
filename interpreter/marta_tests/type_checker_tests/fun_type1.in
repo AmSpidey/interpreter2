@@ -1,3 +1,5 @@
+int mmm() {~3;}
+
 void main() {int o = 2;
 int m = 100;
 int koza = 5 ;

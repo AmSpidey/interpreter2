@@ -44,6 +44,8 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrLn "***************"
                           putStrLn ("typechecker result: " ++ show (checkProgram (preProcess tree)))
                           putStrLn("******************")
+                          putStrLn ("NOW IT'S TIME TO DEPLOY THE INTERPRETER! HURRAY!")
+                          putStrLn(show (evalProgram (preProcess tree)))
                           --putSt
 
                           exitSuccess
