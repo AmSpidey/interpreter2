@@ -20,7 +20,11 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-data Value = ValInt Integer | ValS String | ValB Bool | ValV | LF LoopFlag | Func [ValueArg] Env Block deriving (Ord, Eq, Show)
+data Value = ValInt Integer | ValS String | ValB Bool | ValV | LF LoopFlag | Func [ValueArg] Env Block deriving (Ord, Eq)
+instance Show Value where
+  show (ValInt i) = show i
+  show (ValS s) = s
+  show (ValB b) = show b
 
 data ValueArg = ByVar Ident | ByVal Ident deriving (Ord, Eq, Show)
 
@@ -96,7 +100,7 @@ instance Integral Value where
 -- TODO: delete?
 type Interpretation a = Maybe a
 
-afterEval :: Program -> IO ()
+afterEval :: Program -> IO (Either String Value)
 afterEval prog = runExceptT (runReaderT (evalStateT (evalProgram prog) (M.empty, 0)) M.empty)
 
 evalProgram :: Program -> SS Value
@@ -113,9 +117,12 @@ processArgs (ArgByVal t v:args) = [ByVal v] ++ processArgs args
 processArgs (ArgByVar t v:args) = [ByVar v] ++ processArgs args
 
 evalDecl :: Decl -> SS a -> SS a
-evalDecl (FnDef t (f) args block) g = do
+evalDecl (FnDef t (Ident f) args block) g = do
   env <- ask
-  decVar f (setVar f (Func (processArgs args) env block) (g))
+  l <- newloc
+  let newEnv = M.insert f l env
+  local (const newEnv) (setVar (Ident f) (Func (processArgs args) newEnv block) g)
+  --decVar f (setVar f (Func (processArgs args) env block) (g))
 evalDecl (VarDecl t []) g = g
 evalDecl (VarDecl t ((Init v e):items)) g = do
   val <- interpretExpr e
@@ -220,9 +227,9 @@ preArgs ((EVar (Ident v)):e) ((ByVar x):args) = do
   env <- ask
   let l = fromJust (M.lookup v env)
   res <- preArgs e args
-  return( ([Var l])  ++ res)
+  return(([Var l])  ++ res)
 
-preArgs (e:expr) ((ByVar x):args) = do
+preArgs (e:expr) ((ByVal x):args) = do
   val <- interpretExpr e
   res <- preArgs expr args
   return( ([Val val])  ++ res)

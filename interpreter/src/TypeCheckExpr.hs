@@ -2,7 +2,7 @@ module TypeCheckExpr where
 import Control.Monad(when)
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe(fromMaybe, isNothing)
+import Data.Maybe(fromMaybe, isNothing, fromJust)
 import AbsOstaczGr
 import Debug.Trace
 import qualified Data.Map as M
@@ -31,9 +31,21 @@ isInEnv (Ident x) = do
 type TypeError = String
 defaultErr = "error in typeChecker. Go check your code!"
 fatalErr = "fatal error in typeChecker. This shouldn't have happened. Blamey."
+noMain = "couldn't find proper int main() function. I personally don't like it."
 
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
+
+passToTypes :: [Expr] -> Types -> S Types
+passToTypes [] ret = return ret
+passToTypes (e:expr) ret = do
+  t1 <- (checkExpr e)
+  t2 <- passToTypes expr ret
+  return (t1 :->: t2)
+
+retType :: Types -> S Types
+retType (t :->: types) = retType types
+retType (t) = return t
 
 checkExpr :: Expr -> S Types
 checkExpr (EVar (Ident x)) = do
@@ -83,4 +95,13 @@ checkExpr (EOr expr1 expr2) = do
   unifyTypes t1 t2
   unifyTypes t2 TB
   return TB
+checkExpr (EApp (Ident f) pass) = do
+  env <- ask
+  let t2 = M.lookup f env
+  when (isNothing t2) $ throwError defaultErr
+  let t = fromJust t2
+  ret <- retType t
+  t1 <- passToTypes pass ret
+  unifyTypes t1 t
+  return ret
 

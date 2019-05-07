@@ -1,0 +1,20 @@
+// Let's test recursion and one parameter in a function!
+
+int fib (int n) {
+    show "n is equal to "; show n;
+    if (n == 0) {
+        ~0;
+    }
+    show "just checked if n == 0"
+    if (n == 1) {
+        ~1;
+    }
+    int fn_1 = fib (n - 1);
+    int fn_2 = fib (n - 2);
+    ~fn_1 + fn_2;
+}
+
+int main () {
+    show "main started";
+    ~fib (8);
+}

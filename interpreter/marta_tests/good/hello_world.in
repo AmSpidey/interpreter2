@@ -1,0 +1,4 @@
+int main() {
+    show "Hello world!";
+    ~0;
+}

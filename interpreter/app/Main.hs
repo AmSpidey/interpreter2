@@ -45,7 +45,10 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrLn ("typechecker result: " ++ show (checkProgram (preProcess tree)))
                           putStrLn("******************")
                           putStrLn ("NOW IT'S TIME TO DEPLOY THE INTERPRETER! HURRAY!")
-                          putStrLn(show (evalProgram (preProcess tree)))
+                          res <- afterEval (preProcess tree)
+                          case res of
+                            Left e -> putStrLn("RUNTIME ERROR! " ++ e)
+                            Right val -> putStrLn("Program returned: " ++ show val)
                           --putSt
 
                           exitSuccess

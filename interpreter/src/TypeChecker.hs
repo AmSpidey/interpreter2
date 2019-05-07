@@ -16,28 +16,34 @@ import Control.Monad.State
 checkProgram :: Program -> String
 checkProgram (Prog tops) =
   trace "run check Program" $
-  case runExcept (runReaderT (checkDecls ((return ())) tops) M.empty) of
+  case runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty) of
     Left e -> e
     Right _ -> "went ok"
 
 checkDecls :: S a -> [Decl] -> S a
-checkDecls f (decls) = trace "starting checkDecls" $ preDecl (do
-  mapM_ checkTopDef decls
-  f) decls
+checkDecls f (decls) = trace "starting checkDecls" $ preDecl (f) decls
+
+checkForMain :: [Decl] -> S ()
+checkForMain [] = throwError $ noMain
+checkForMain ((FnDef t (Ident f) args block):decls) = trace (show decls ++ "hmm " ++ show f) $ do
+  when (f == "main" && args == [] && t == TInt) $ return ()
+  checkForMain decls
+checkForMain (elseDecl:decls) = checkForMain decls
   --mapM_ checkTopDef (d:decls)
   --local (M.union pre) (mapM_ checkTopDef t)
 
 -- TODO: create nicer errors than just defaultErr.
 -- TODO: simplify using a folding function
 -- TODO: possibly reverse args. Idk.
--- TODO: change to functions having to be declared BEFORE functions that uses them. Less complicated.
 preDecl :: S a -> [Decl] -> S a
 preDecl g [] = g
-preDecl g ((FnDef t (Ident f) args block):decls) = do
+preDecl g ((d@(FnDef t (Ident f) args block)):decls) = do
   env <- ask
   let mt = M.lookup f env
   if isNothing mt
-    then local ((M.insert f (typeFromArgs args (transType t)))) (preDecl g decls)
+    then local ((M.insert f (typeFromArgs args (transType t)))) (do
+      checkTopDef d
+      preDecl g decls)
     else trace ("repeating function names") $ throwError defaultErr
 preDecl g ((VarDecl t (vars)):decls) = declVars t (vars) (preDecl g decls)
 --declVar t v (preDecl g ((VarDecl t (vars)):decls))
@@ -64,15 +70,10 @@ typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
 -- TODO: check for repeating arguments in functions (SET?)
 -- TODO: CHECK FOR MAIN.
 checkTopDef :: Decl -> S ()
-checkTopDef (FnDef t (Ident f) args block) = do
-  env <- ask
-  let mt = M.lookup f env
-  if isNothing mt
-    then trace ("error in checkTopDef") $ throwError defaultErr
-    else local (M.insert "" (transType t)) funcWithDecls
+checkTopDef (FnDef t (Ident f) args block) = local (M.insert "" (transType t)) funcWithDecls
   where
     funcWithDecls = checkBlock (concatBlocks (declFromArgs args) block)
-checkTopDef elseDef = return ()
+checkTopDef elseDef = throwError defaultErr
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
@@ -91,7 +92,7 @@ checkBlock (BlockStmt ((DeclStmt decl):bs)) = checkDecls (checkBlock (BlockStmt 
 
 checkBlock (BlockStmt (Empty:bs)) = checkBlock (BlockStmt bs)
 
-checkBlock (BlockStmt (BStmt b:bs)) = do
+checkBlock (BlockStmt ((BStmt b):bs)) = do
   checkBlock b
   checkBlock (BlockStmt bs)
 

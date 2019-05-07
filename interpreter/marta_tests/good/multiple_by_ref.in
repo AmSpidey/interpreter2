@@ -1,0 +1,18 @@
+void changer (& int tochange) {
+    tochange = 42;
+    ~;
+}
+
+void show_variable(int var) {
+    show "var is equal to "; show var;
+    ~;
+}
+
+int main () {
+    int x = 2;
+    show_variable(x);
+    changer(x);
+    show_variable(x);
+
+    ~0;
+}

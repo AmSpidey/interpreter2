@@ -1,0 +1,38 @@
+int p = 2;
+
+int fun1() {
+    show "global fun1 ";
+    show "p++"
+    p++;
+    show p
+     ~102;
+}
+
+int fun2() {
+    show "global fun2 ";
+    fun1();
+     ~4;
+}
+
+int main() {
+    int x = fun1();
+    show "x = fun1()"
+    show x;
+
+    int fun3() {
+        x = 5;
+        show "local fun3 changed x to";
+        show x;
+        show "I will also change p just for fun! To: "
+        p = 42;
+        show p;
+        ~666;
+        }
+    int y = fun3();
+    show "y = fun3()"
+    show y
+    int z = fun2();
+    show "z = fun2()"
+    show z
+    ~3;
+}

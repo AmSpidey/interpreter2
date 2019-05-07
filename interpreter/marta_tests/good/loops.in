@@ -1,0 +1,18 @@
+int main() {
+    int x = 5;
+    show "beginning x is "
+    show x;
+    @_ sekcja {
+        show "x in the beginning of section is";
+        show x;
+        x = x + 4;
+        if (x >= 20) {
+            show "x crossed 20!"
+            finish
+        }
+        else {
+            repeat
+        }
+    }
+    ~3;
+}
