@@ -25,8 +25,6 @@ checkForMain ((FnDef t (Ident f) args block):decls) = do
   unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
   return ()
 checkForMain (elseDecl:decls) = checkForMain decls
-  --mapM_ checkTopDef (d:decls)
-  --local (M.union pre) (mapM_ checkTopDef t)
 
 -- TODO: simplify using a folding function
 -- TODO: possibly reverse args. Idk.
@@ -41,16 +39,12 @@ preDecl g ((d@(FnDef t (Ident f) args block)):decls) = do
       preDecl g decls)
     else trace ("repeating function names") $ throwError repNames
 preDecl g ((VarDecl t (vars)):decls) = declVars t (vars) (preDecl g decls)
---declVar t v (preDecl g ((VarDecl t (vars)):decls))
 
 declVar :: Type -> Item -> S a -> S a
 declVar t (Init (Ident v) expr) g = do
   tE <- checkExpr expr
   unifyTypes tE (transType t)
-  redecl <- isInEnv (Ident v)
-  if redecl
-    then trace ("redeclaring var") $ throwError repVars
-    else local (M.insert (v) (transType t)) (g)
+  local (M.insert (v) (transType t)) (g)
 
 declVars :: Type -> [Item] -> S a -> S a
 declVars t ([]) f = f
@@ -59,8 +53,8 @@ declVars t (v:vars) f = declVar t v (declVars t vars f)
 -- TODO: check for void arguments. Is it a bug or a feature?
 typeFromArgs :: [Arg] -> Types -> Types
 typeFromArgs [] t = t
-typeFromArgs (ArgByVal a _:args) t = transType a :->: typeFromArgs args t
-typeFromArgs (ArgByVar a _:args) t = transType a :->: typeFromArgs args t
+typeFromArgs (ArgByVal a _:args) t = (ByVal, transType a) :->: typeFromArgs args t
+typeFromArgs (ArgByVar a _:args) t = (ByVar, transType a) :->: typeFromArgs args t
 
 -- TODO: check for repeating arguments in functions (SET?)
 -- TODO: CHECK FOR MAIN.

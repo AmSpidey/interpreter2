@@ -12,9 +12,6 @@ import TypeChecker
 import Interpreter
 import PrintOstaczGr
 import AbsOstaczGr
-import PreProcessing
-
-
 
 import ErrM
 
@@ -38,20 +35,20 @@ run v p s = let ts = myLLexer s in case p ts of
            Ok  tree -> do putStrLn "\nParse Successful!"
                           showTree v tree
                           putStrLn "*******************"
-                          case checkProgram (preProcess tree) of
+                          putStrLn "*******************"
+                          case checkProgram (tree) of
                             Left e -> do
                               putStrLn ("TypeChecker error. Following error first occured: " ++ e)
                               exitFailure
                             Right _ -> putStrLn ("Type checking passed.")
                           putStrLn("******************")
                           putStrLn ("NOW IT'S TIME TO DEPLOY THE INTERPRETER! HURRAY!")
-                          res <- afterEval (preProcess tree)
+                          res <- afterEval (tree)
                           case res of
                             Left e -> do
                               putStrLn("RUNTIME ERROR! " ++ e)
                               exitFailure
-                            Right val -> putStrLn("Program returned: " ++ show val)
-                          --putSt
+                            Right val -> putStrLn("\n" ++ "Program returned: " ++ show val)
 
                           exitSuccess
 

@@ -1,0 +1,19 @@
+int main () {
+    int y = 2;
+    int counter = 1;
+    @_section 0 {
+        show "I am doing this for ";
+        show counter;
+        show " time";
+        show "\n";
+        counter++;
+        show "current y is: "; show y; show "\n"
+        if (y <= 8) {
+            y = y*2;
+            repeat y times
+        }
+        else {
+        }
+    }
+    ~0;
+}

@@ -1,0 +1,8 @@
+void changer (& int x) {
+    x = 10;
+}
+
+int main () {
+    int y = 5;
+    changer(10);
+}

@@ -9,7 +9,8 @@ import qualified Data.Map as M
 import ErrM
 import Control.Monad.Except
 
-data Types = TI | TB | TS | TV | Types :->: Types deriving (Eq, Show)
+data Types = TI | TB | TS | TV | (ByType, Types) :->: Types deriving (Eq, Show)
+data ByType = ByVar | ByVal deriving (Eq, Show)
 
 unifyTypes :: Types -> Types -> S ()
 unifyTypes t1 t2 = when (t1 /= t2) $ throwError (unifyFail ++ show t1 ++ " and " ++ show t2)
@@ -43,14 +44,18 @@ type S a = ReaderT TypeEnv (Except TypeError) a
 
 passToTypes :: [Expr] -> Types -> S Types
 passToTypes [] ret = return ret
+passToTypes ((EVar (Ident x)):expr) ret = do
+  t1 <- checkExpr (EVar (Ident x))
+  t2 <- passToTypes expr ret
+  return ((ByVar, t1) :->: t2)
 passToTypes (e:expr) ret = do
   t1 <- (checkExpr e)
   t2 <- passToTypes expr ret
-  return (t1 :->: t2)
+  return ((ByVal, t1) :->: t2)
 
 retType :: Types -> S Types
 retType (t :->: types) = retType types
-retType (t) = return t
+retType t = return t
 
 checkExpr :: Expr -> S Types
 checkExpr (EVar (Ident x)) = do

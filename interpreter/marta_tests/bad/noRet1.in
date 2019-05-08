@@ -1,0 +1,16 @@
+int main () {
+    @_ section{
+        int y = 5;
+        if (y == 5) {
+            if (y == 5) {
+                if (y == 5) {
+                    if (y == 5) {
+                        finish;
+                    }
+                }
+            }
+            ~10;
+        }
+        ~2;
+    }
+}

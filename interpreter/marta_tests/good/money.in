@@ -1,0 +1,15 @@
+// money, money, money...
+
+int main () {
+    earn 5;
+
+    @_section1 2 {
+        show "program entered section 1"
+        earn 1;
+        @_section2 10 {
+            show "program entered section 2"
+            ~1;
+        }
+    }
+    ~0;
+}

@@ -1,4 +1,4 @@
-// Lets test multiple parameters to function AND passing by variable, not value!
+// Let's test multiple parameters to function AND passing by variable, not value!
 
 void changer (& int tochange) {
     tochange = 42;

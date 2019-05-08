@@ -12,6 +12,7 @@ import Control.Monad.State
 import Data.Maybe(fromMaybe, fromJust, isNothing)
 import Control.Monad.Cont
 import Control.Monad.Except
+import Debug.Trace
 
 type Result = Err String
 
@@ -46,25 +47,37 @@ type Env = M.Map String Loc
 -- state and next free location
 type Mem = M.Map Loc Value
 
+type Coins = Integer
+
 data LoopFlag = FIN | REP Integer deriving (Ord, Eq, Show)
 
-type Store = (Mem, Loc)
+type Store = (Mem, Loc, Coins)
 
 type SS a = StateT Store (ReaderT Env (ExceptT String IO)) a
 
 -- reserving new location
 newloc :: SS Loc
 newloc = do
-  (st,l) <- get
-  put (st,l+1)
+  (st,l, c) <- get
+  put (st,l+1, c)
   return l
 
 modifyMem :: (Mem -> Mem) -> SS ()
 modifyMem f =
-  modify (\(st,l) -> (f st,l))
+  modify (\(st, l, c) -> (f st, l, c))
 
+-- TODO: delete or use.
 inLocal :: Env -> SS a -> SS a
 inLocal locEnv f = local (const locEnv) f
+
+earn :: Integer -> SS ()
+earn x | x < 0 = throwError "trying to earn less than 0 amount of money"
+       | otherwise = do
+          (mem, loc, coins) <- get
+          put (mem, loc, coins + x)
+
+spend :: Integer -> SS ()
+spend x = earn (-x)
 
 decVar :: Ident -> SS a -> SS a
 decVar (Ident v) g = do
@@ -75,8 +88,8 @@ setVar :: Ident -> Value -> SS a -> SS a
 setVar (Ident v) val g = do
   env <- ask
   let l = fromJust (M.lookup v env)
-  (st, ml) <- get
-  put (M.insert l val st, ml)
+  (st, ml, c) <- get
+  put (M.insert l val st, ml, c)
   g
 
 instance Num Value where
@@ -101,7 +114,7 @@ instance Integral Value where
 type Interpretation a = Maybe a
 
 afterEval :: Program -> IO (Either String Value)
-afterEval prog = runExceptT (runReaderT (evalStateT (evalProgram prog) (M.empty, 0)) M.empty)
+afterEval prog = runExceptT (runReaderT (evalStateT (evalProgram prog) (M.empty, 0, 0)) M.empty)
 
 evalProgram :: Program -> SS Value
 evalProgram (Prog [d]) = evalDecl d (evalMain)
@@ -186,6 +199,17 @@ evalBlock (BlockStmt (((SExp e)):stmts)) = do
 
 evalBlock (BlockStmt ((Subsection i b):stmts)) = evalLoop (BlockStmt ((Subsection i b):stmts)) 1
 
+evalBlock (BlockStmt ((SubsectionPaid i expr b):stmts)) = do
+  val <- interpretExpr expr
+  let toPay = getInt val
+  (_, _, toSpend) <- get
+  when (toPay < 0) $ throwError "section worth less than 0"
+  if (toSpend >= toPay)
+    then do
+      spend toPay
+      evalLoop (BlockStmt ((Subsection i b):stmts)) 1
+    else evalBlock (BlockStmt stmts)
+
 evalBlock (BlockStmt ((RepeatXTimes expr):stmts)) = do
   val <- interpretExpr expr
   let int = getInt val
@@ -200,6 +224,17 @@ evalBlock (BlockStmt ((Show expr):stmts)) = do
   val <- interpretExpr expr
   liftIO $ putStr (show val)
   evalBlock (BlockStmt stmts)
+
+evalBlock (BlockStmt ((Earn expr):stmts)) = do
+  val <- interpretExpr expr
+  earn (getInt val)
+  evalBlock (BlockStmt stmts)
+
+evalBlock (BlockStmt ((Incr v):stmts)) = evalBlock (BlockStmt ((Ass v ((EAdd (EVar v) Plus (ELitInt 1)))):stmts))
+
+evalBlock (BlockStmt ((Decr v):stmts)) = evalBlock (BlockStmt ((Ass v ((EAdd (EVar v) Minus (ELitInt 1)))):stmts))
+
+evalBlock b = trace ("unexpected block " ++ show b) $ error "unexpected block"
 
 -- TODO: in typechecker check if the expression is variable!
 evalFunc :: Value -> [Passed] -> SS (Value)
@@ -234,11 +269,13 @@ preArgs (e:expr) ((ByVal x):args) = do
   res <- preArgs expr args
   return( ([Val val])  ++ res)
 
+preArgs (e:expr) ((ByVar x):args) = throwError ("passing expression as argument by variable")
+
 interpretExpr :: Expr -> SS Value
 interpretExpr (EVar (Ident var)) = do
   env <- ask
   let l = fromMaybe (error "undefined variable") (M.lookup var env)
-  (st,_)  <- get
+  (st, _, _)  <- get
   return $ fromMaybe (error "undefined location") (M.lookup l st)
 
 interpretExpr (ELitInt integer) = return $ ValInt integer
@@ -294,7 +331,7 @@ interpretExpr (EOr expr1 expr2) = do
 interpretExpr (EApp (Ident func) pass) = do
   env <- ask
   let l = fromJust (M.lookup func env)
-  (st, _) <- get
+  (st, _, _) <- get
   let f@(Func args env block) = fromJust (M.lookup l st)
   toPass <- preArgs pass args
   local (const env) (evalFunc f toPass)
