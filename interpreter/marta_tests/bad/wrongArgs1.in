@@ -1,0 +1,11 @@
+void fun1 (string s1, string s2, string s3) {
+    show s1; show s2; show s3;
+}
+
+
+int main () {
+    string a = "hello";
+    string b = "world";
+    fun1(a, b);
+    ~0;
+}

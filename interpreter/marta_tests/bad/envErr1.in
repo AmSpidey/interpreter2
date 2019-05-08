@@ -1,0 +1,5 @@
+// no predeclaration for y
+
+int main () {
+    y = 0;
+}

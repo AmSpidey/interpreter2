@@ -1,0 +1,9 @@
+// wrong type assignment
+
+int main () {
+    int x = 5;
+    int y = 10;
+    boolean b = (x == y);
+    int y = !b;
+    ~0;
+}

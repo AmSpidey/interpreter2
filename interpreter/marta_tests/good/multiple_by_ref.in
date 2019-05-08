@@ -1,18 +1,21 @@
+// Lets test multiple parameters to function AND passing by variable, not value!
+
 void changer (& int tochange) {
     tochange = 42;
     ~;
 }
 
-void show_variable(int var) {
-    show "var is equal to "; show var;
+void show_variable(int var, string name) {
+    show name; show " is equal to "; show var;
+    show "\n"
     ~;
 }
 
 int main () {
     int x = 2;
-    show_variable(x);
+    show_variable(x, "x");
     changer(x);
-    show_variable(x);
+    show_variable(x, "x");
 
     ~0;
 }

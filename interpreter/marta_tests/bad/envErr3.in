@@ -1,0 +1,9 @@
+void fun1 () {
+    int x = 2;
+    ~;
+}
+
+int main () {
+    x = 5;
+    ~0;
+}

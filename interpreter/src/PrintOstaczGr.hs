@@ -100,7 +100,7 @@ instance Print Decl where
 instance Print Arg where
   prt i e = case e of
     ArgByVal type_ id -> prPrec i 0 (concatD [prt 0 type_, prt 0 id])
-    ArgByVar type_ id -> prPrec i 2 (concatD [doc (showString "&"), prt 0 type_, prt 0 id])
+    ArgByVar type_ id -> prPrec i 0 (concatD [doc (showString "&"), prt 0 type_, prt 0 id])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])

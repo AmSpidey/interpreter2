@@ -27,10 +27,8 @@ type Verbosity = Int
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = if v > 1 then putStrLn s else return ()
 
---runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
---run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
            Bad s    -> do putStrLn "\nParse              Failed...\n"
                           putStrV v "Tokens:"
@@ -40,14 +38,18 @@ run v p s = let ts = myLLexer s in case p ts of
            Ok  tree -> do putStrLn "\nParse Successful!"
                           showTree v tree
                           putStrLn "*******************"
-                          --putStrLn (show (evalExpr (treeToExp tree)))
-                          putStrLn "***************"
-                          putStrLn ("typechecker result: " ++ show (checkProgram (preProcess tree)))
+                          case checkProgram (preProcess tree) of
+                            Left e -> do
+                              putStrLn ("TypeChecker error. Following error first occured: " ++ e)
+                              exitFailure
+                            Right _ -> putStrLn ("Type checking passed.")
                           putStrLn("******************")
                           putStrLn ("NOW IT'S TIME TO DEPLOY THE INTERPRETER! HURRAY!")
                           res <- afterEval (preProcess tree)
                           case res of
-                            Left e -> putStrLn("RUNTIME ERROR! " ++ e)
+                            Left e -> do
+                              putStrLn("RUNTIME ERROR! " ++ e)
+                              exitFailure
                             Right val -> putStrLn("Program returned: " ++ show val)
                           --putSt
 

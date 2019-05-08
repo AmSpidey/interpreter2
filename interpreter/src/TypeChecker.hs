@@ -13,26 +13,21 @@ import Control.Monad(when)
 import Control.Monad.Reader
 import Control.Monad.State
 
-checkProgram :: Program -> String
-checkProgram (Prog tops) =
-  trace "run check Program" $
-  case runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty) of
-    Left e -> e
-    Right _ -> "went ok"
+checkProgram :: Program -> Either String ()
+checkProgram (Prog tops) = runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty)
 
 checkDecls :: S a -> [Decl] -> S a
-checkDecls f (decls) = trace "starting checkDecls" $ preDecl (f) decls
+checkDecls f (decls) = trace "starting checkDecls" $ preDecl f decls
 
 checkForMain :: [Decl] -> S ()
 checkForMain [] = throwError $ noMain
-checkForMain ((FnDef t (Ident f) args block):decls) = trace (show decls ++ "hmm " ++ show f) $ do
-  when (f == "main" && args == [] && t == TInt) $ return ()
-  checkForMain decls
+checkForMain ((FnDef t (Ident f) args block):decls) = do
+  unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
+  return ()
 checkForMain (elseDecl:decls) = checkForMain decls
   --mapM_ checkTopDef (d:decls)
   --local (M.union pre) (mapM_ checkTopDef t)
 
--- TODO: create nicer errors than just defaultErr.
 -- TODO: simplify using a folding function
 -- TODO: possibly reverse args. Idk.
 preDecl :: S a -> [Decl] -> S a
@@ -44,7 +39,7 @@ preDecl g ((d@(FnDef t (Ident f) args block)):decls) = do
     then local ((M.insert f (typeFromArgs args (transType t)))) (do
       checkTopDef d
       preDecl g decls)
-    else trace ("repeating function names") $ throwError defaultErr
+    else trace ("repeating function names") $ throwError repNames
 preDecl g ((VarDecl t (vars)):decls) = declVars t (vars) (preDecl g decls)
 --declVar t v (preDecl g ((VarDecl t (vars)):decls))
 
@@ -54,7 +49,7 @@ declVar t (Init (Ident v) expr) g = do
   unifyTypes tE (transType t)
   redecl <- isInEnv (Ident v)
   if redecl
-    then trace ("redeclaring var") $ throwError defaultErr
+    then trace ("redeclaring var") $ throwError repVars
     else local (M.insert (v) (transType t)) (g)
 
 declVars :: Type -> [Item] -> S a -> S a
@@ -73,7 +68,7 @@ checkTopDef :: Decl -> S ()
 checkTopDef (FnDef t (Ident f) args block) = local (M.insert "" (transType t)) funcWithDecls
   where
     funcWithDecls = checkBlock (concatBlocks (declFromArgs args) block)
-checkTopDef elseDef = throwError defaultErr
+checkTopDef elseDef = error ("variable declaration passed to checkTopDef")
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
@@ -116,7 +111,7 @@ checkBlock (BlockStmt (Ret e:bs)) = do
   t <- checkExpr e
   env <- ask
   let mt = M.lookup "" env
-  when (isNothing mt) $ trace ("error in block: " ++ show bs) $ throwError defaultErr
+  when (isNothing mt) $ error "no return environment inside a block"
   let rt = fromJust mt
   unifyTypes rt t
   checkBlock (BlockStmt bs)
@@ -124,7 +119,7 @@ checkBlock (BlockStmt (Ret e:bs)) = do
 checkBlock (BlockStmt (VRet:bs)) = do
   env <- ask
   let mt = M.lookup "" env
-  when (isNothing mt) $ trace ("error in block: " ++ show bs) $ throwError defaultErr
+  when (isNothing mt) $ error "no return environment inside a block"
   let rt = fromJust mt
   unifyTypes rt TV
   checkBlock (BlockStmt bs)
@@ -171,4 +166,4 @@ checkBlock (BlockStmt (Show expr:bs)) = do
   t <- checkExpr expr
   checkBlock (BlockStmt bs)
 
-checkBlock (BlockStmt bs) = trace ("couldn't work with block: " ++ show bs) $ throwError fatalErr
+checkBlock (BlockStmt bs) = error ("typeChecking of a block not implemented! Block: \n" ++ show bs)

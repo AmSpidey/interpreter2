@@ -1,0 +1,4 @@
+// we need to put ";" after every return
+int main () {
+    ~0
+}

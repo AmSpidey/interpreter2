@@ -14,7 +14,7 @@ separator nonempty Decl "" ;
 
 ArgByVal. 	   Arg ::= Type Ident;
 
-ArgByVar.	   Arg2 ::= "&" Type Ident ;
+ArgByVar.	   Arg ::= "&" Type Ident ;
 separator  Arg "," ;
 
 -- Statements --

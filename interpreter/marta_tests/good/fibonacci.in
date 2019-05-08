@@ -1,11 +1,16 @@
 // Let's test recursion and one parameter in a function!
 
+void putLn() {
+    show "\n";
+    ~;
+}
+
 int fib (int n) {
-    show "n is equal to "; show n;
+    show "n is equal to "; show n; putLn();
     if (n == 0) {
         ~0;
     }
-    show "just checked if n == 0"
+    show "just checked if n == 0"; putLn();
     if (n == 1) {
         ~1;
     }
@@ -15,6 +20,6 @@ int fib (int n) {
 }
 
 int main () {
-    show "main started";
+    show "main started"; putLn();
     ~fib (8);
 }

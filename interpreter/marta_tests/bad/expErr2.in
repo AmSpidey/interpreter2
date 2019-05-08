@@ -1,0 +1,4 @@
+int main () {
+    boolean y = "hello";
+    ~0;
+}

@@ -12,7 +12,7 @@ import Control.Monad.Except
 data Types = TI | TB | TS | TV | Types :->: Types deriving (Eq, Show)
 
 unifyTypes :: Types -> Types -> S ()
-unifyTypes t1 t2 = when (t1 /= t2) $ trace ("fail to unify " ++ show t1 ++ " " ++ show t2 ) $ throwError defaultErr
+unifyTypes t1 t2 = when (t1 /= t2) $ throwError (unifyFail ++ show t1 ++ " and " ++ show t2)
 
 transType :: Type -> Types
 transType TInt = TI
@@ -29,9 +29,14 @@ isInEnv (Ident x) = do
     else return True
 
 type TypeError = String
-defaultErr = "error in typeChecker. Go check your code!"
+defaultErr = "error in typeChecker. Go check your code! Or not. Maybe you have better stuff to do. I'm not your mom."
 fatalErr = "fatal error in typeChecker. This shouldn't have happened. Blamey."
 noMain = "couldn't find proper int main() function. I personally don't like it."
+repNames = "repeating function names."
+repVars = "repeating variable names in one environment."
+notFound = "variable or function not found in the environment: "
+wrongType = "expression is of the wrong type: "
+unifyFail = "expressions are supposed to be of the same type, but they are not: "
 
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
@@ -51,7 +56,7 @@ checkExpr :: Expr -> S Types
 checkExpr (EVar (Ident x)) = do
   env <- ask
   let mt = M.lookup x env
-  maybe (trace ("fail to look up " ++ x) $ throwError defaultErr) return mt
+  maybe (throwError (notFound ++ x)) return mt
 checkExpr (ELitInt _) = return TI
 checkExpr (ELitBool _) = return TB
 checkExpr (EString _) = return TS
@@ -59,12 +64,12 @@ checkExpr (Not b) = do
   t <- checkExpr b
   case t of
     TB -> return TB
-    _ -> trace ("error in Not " ++ show b) (throwError defaultErr)
+    _ -> throwError (wrongType ++ show b)
 checkExpr (Neg x) = do
   t <- checkExpr x
   case t of
     TI -> return TI
-    _ -> trace "error in Neg: " $ throwError defaultErr
+    _ -> throwError (wrongType ++ show x)
 checkExpr (EMul expr1 op expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
@@ -98,7 +103,7 @@ checkExpr (EOr expr1 expr2) = do
 checkExpr (EApp (Ident f) pass) = do
   env <- ask
   let t2 = M.lookup f env
-  when (isNothing t2) $ throwError defaultErr
+  when (isNothing t2) $ throwError (notFound ++ f)
   let t = fromJust t2
   ret <- retType t
   t1 <- passToTypes pass ret

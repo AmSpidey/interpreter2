@@ -198,7 +198,7 @@ evalBlock (BlockStmt ((Finish):stmts)) = do
 
 evalBlock (BlockStmt ((Show expr):stmts)) = do
   val <- interpretExpr expr
-  liftIO $ print (show val)
+  liftIO $ putStr (show val)
   evalBlock (BlockStmt stmts)
 
 -- TODO: in typechecker check if the expression is variable!

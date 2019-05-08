@@ -1,0 +1,6 @@
+// no predeclaration for function
+
+int main () {
+    fib();
+    ~0;
+}
