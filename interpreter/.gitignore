@@ -1,5 +1,4 @@
 .stack-work/
-interpreter.cabal
 out
 src/*.hi
 src/*.o
