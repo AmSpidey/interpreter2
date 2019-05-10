@@ -1,11 +1,9 @@
 module TypeCheckExpr where
-import Control.Monad (when)import Control.Monad.Reader
-import Control.Monad.State
-import Data.Maybe(fromMaybe, isNothing, fromJust)
+import Control.Monad (when)
+import Control.Monad.Reader
+import Data.Maybe(isNothing, fromJust)
 import AbsOstaczGr
-import Debug.Trace
 import qualified Data.Map as M
-import ErrM
 import Control.Monad.Except
 
 data Types = TI | TB | TS | TV | (ByType, Types) :->: Types deriving (Eq, Show)
@@ -43,12 +41,12 @@ type S a = ReaderT TypeEnv (Except TypeError) a
 
 passToTypes :: [Expr] -> Types -> S Types
 passToTypes [] ret = return ret
-passToTypes ((EVar (Ident x)):expr) ret = do
+passToTypes (EVar (Ident x):expr) ret = do
   t1 <- checkExpr (EVar (Ident x))
   t2 <- passToTypes expr ret
   return ((ByVar, t1) :->: t2)
 passToTypes (e:expr) ret = do
-  t1 <- (checkExpr e)
+  t1 <- checkExpr e
   t2 <- passToTypes expr ret
   return ((ByVal, t1) :->: t2)
 

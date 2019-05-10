@@ -7,10 +7,8 @@ import TypeCheckExpr
 import Control.Monad (when)
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Monad.State
 import qualified Data.Map as M
-import Data.Maybe (fromJust, fromMaybe, isNothing)
-import ErrM
+import Data.Maybe (fromJust, isNothing)
 
 concatBlocks :: Block -> Block -> Block
 concatBlocks (BlockStmt stmts1) (BlockStmt stmts2) = BlockStmt (stmts1++stmts2)

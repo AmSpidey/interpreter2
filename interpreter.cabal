@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 69a13bc2337a485c64e96f249da353a68ffccb1ead9b6591177a6362bcbd9d8c
+-- hash: 9685dfbc0968767b6bdc67462207c9cc809eb101b072b0e74a22ee5201cfc8ce
 
 name:           interpreter
 version:        0.1.0.0
@@ -34,7 +34,6 @@ library
       Lib
       ParOstaczGr
       PrintOstaczGr
-      Simplified
       TypeChecker
       TypeCheckExpr
   other-modules:

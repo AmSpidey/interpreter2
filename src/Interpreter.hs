@@ -10,7 +10,6 @@ import qualified Data.Map as M
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe(fromMaybe, fromJust, isNothing)
-import Control.Monad.Cont
 import Control.Monad.Except
 import Debug.Trace
 
@@ -33,11 +32,11 @@ data Passed = Val Value | Var Loc
 
 getBool :: Value -> Bool
 getBool (ValB v) = v
-getBool _ = error ("error in typeChecker for bool")
+getBool _ = error "error in typeChecker for bool"
 
 getInt :: Value -> Integer
 getInt (ValInt v) = v
-getInt _ = error ("error in typeChecker for integer")
+getInt _ = error "error in typeChecker for integer"
 
 type Loc = Int
 
@@ -68,7 +67,7 @@ modifyMem f =
 
 -- TODO: delete or use.
 inLocal :: Env -> SS a -> SS a
-inLocal locEnv f = local (const locEnv) f
+inLocal locEnv = local (const locEnv)
 
 earn :: Integer -> SS ()
 earn x | x < 0 = throwError "trying to earn less than 0 amount of money"
@@ -249,7 +248,7 @@ evalFunc (Func ((ByVal v):args) env block ) ((Val p):expr) = decVar v $ setVar v
 
 evalFunc (Func ((ByVar (Ident v)):args) env block ) ((Var l):expr) = local (M.insert v l) (evalFunc (Func args env block) expr)
 
-evalFunc _ _ = error ("non-matching argument to function. Possible fault with TypeChecker")
+evalFunc _ _ = error "non-matching argument to function. Possible fault with TypeChecker"
 
 -- TODO: make it work with Either
 -- evalExpr :: Expr -> Value
@@ -258,18 +257,18 @@ evalFunc _ _ = error ("non-matching argument to function. Possible fault with Ty
 preArgs :: [Expr] -> [ValueArg] -> SS [Passed]
 preArgs [] [] = return []
 
-preArgs ((EVar (Ident v)):e) ((ByVar x):args) = do
+preArgs (EVar (Ident v):e) (ByVar x:args) = do
   env <- ask
   let l = fromJust (M.lookup v env)
   res <- preArgs e args
-  return(([Var l])  ++ res)
+  return (Var l : res)
 
-preArgs (e:expr) ((ByVal x):args) = do
+preArgs (e:expr) (ByVal _:args) = do
   val <- interpretExpr e
   res <- preArgs expr args
-  return( ([Val val])  ++ res)
+  return (Val val : res)
 
-preArgs (e:expr) ((ByVar x):args) = throwError ("passing expression as argument by variable")
+preArgs (_:_) (ByVar _:_) = throwError "passing expression as argument by variable"
 
 interpretExpr :: Expr -> SS Value
 interpretExpr (EVar (Ident var)) = do
@@ -332,53 +331,57 @@ interpretExpr (EApp (Ident func) pass) = do
   env <- ask
   let l = fromJust (M.lookup func env)
   (st, _, _) <- get
-  let f@(Func args env block) = fromJust (M.lookup l st)
+  let f@(Func args envF _) = fromJust (M.lookup l st)
   toPass <- preArgs pass args
-  local (const env) (evalFunc f toPass)
+  local (const envF) (evalFunc f toPass)
+
+interpretExpr _ = error "not handled expression type"
 
 transIdent :: Ident -> Result
 transIdent x = case x of
-  Ident string -> failure x
+  Ident _ -> failure x
 transBVAL :: BVAL -> Result
 transBVAL x = case x of
-  BVAL string -> failure x
+  BVAL _ -> failure x
 transProgram :: Program -> Result
 transProgram x = case x of
-  Prog decls -> failure x
+  Prog _ -> failure x
 transDecl :: Decl -> Result
-transDecl x = case x of
-  FnDef type_ ident args block -> failure x
-  VarDecl type_ items -> failure x
+transDecl x =
+  case x of
+    FnDef {} -> failure x
+    VarDecl _ _ -> failure x
 transArg :: Arg -> Result
 transArg x = case x of
-  ArgByVal type_ ident -> failure x
-  ArgByVar type_ ident -> failure x
+  ArgByVal _ _ -> failure x
+  ArgByVar _ _ -> failure x
 transBlock :: Block -> Result
 transBlock x = case x of
-  BlockStmt stmts -> failure x
+  BlockStmt _ -> failure x
 transStmt :: Stmt -> Result
-transStmt x = case x of
-  Empty -> failure x
-  BStmt block -> failure x
-  DeclStmt decl -> failure x
-  Ass ident expr -> failure x
-  Incr ident -> failure x
-  Decr ident -> failure x
-  Ret expr -> failure x
-  VRet -> failure x
-  Cond expr stmt -> failure x
-  CondElse expr stmt1 stmt2 -> failure x
-  Subsection ident block -> failure x
-  SubsectionPaid ident expr block -> failure x
-  Repeat -> failure x
-  Finish -> failure x
-  Earn expr -> failure x
-  RepeatXTimes expr -> failure x
-  SExp expr -> failure x
-  Show expr -> failure x
+transStmt x =
+  case x of
+    Empty -> failure x
+    BStmt _ -> failure x
+    DeclStmt _ -> failure x
+    Ass _ _ -> failure x
+    Incr _ -> failure x
+    Decr _ -> failure x
+    Ret _ -> failure x
+    VRet -> failure x
+    Cond _ _ -> failure x
+    CondElse {} -> failure x
+    Subsection _ _ -> failure x
+    SubsectionPaid {} -> failure x
+    Repeat -> failure x
+    Finish -> failure x
+    Earn _ -> failure x
+    RepeatXTimes _ -> failure x
+    SExp _ -> failure x
+    Show _ -> failure x
 transItem :: Item -> Result
 transItem x = case x of
-  Init ident expr -> failure x
+  Init _ _ -> failure x
 transType :: Type -> Result
 transType x = case x of
   TInt -> failure x
@@ -386,19 +389,20 @@ transType x = case x of
   TBool -> failure x
   TVoid -> failure x
 transExpr :: Expr -> Result
-transExpr x = case x of
-  EVar ident -> failure x
-  ELitInt integer -> failure x
-  ELitBool bval -> failure x
-  EApp ident exprs -> failure x
-  EString string -> failure x
-  Neg expr -> failure x
-  Not expr -> failure x
-  EMul expr1 mulop expr2 -> failure x
-  EAdd expr1 addop expr2 -> failure x
-  ERel expr1 relop expr2 -> failure x
-  EAnd expr1 expr2 -> failure x
-  EOr expr1 expr2 -> failure x
+transExpr x =
+  case x of
+    EVar _ -> failure x
+    ELitInt _ -> failure x
+    ELitBool bval -> failure x
+    EApp _ _ -> failure x
+    EString _ -> failure x
+    Neg _ -> failure x
+    Not _ -> failure x
+    EMul {} -> failure x
+    EAdd {} -> failure x
+    ERel {} -> failure x
+    EAnd _ _ -> failure x
+    EOr _ _ -> failure x
 transAddOp :: AddOp -> Result
 transAddOp x = case x of
   Plus -> failure x
