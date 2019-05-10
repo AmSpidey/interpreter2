@@ -1,7 +1,6 @@
 module TypeChecker where
 
 import AbsOstaczGr
-import Debug.Trace
 import TypeCheckExpr
 
 import Control.Monad (when)
@@ -17,7 +16,7 @@ checkProgram :: Program -> Either String ()
 checkProgram (Prog tops) = runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty)
 
 checkDecls :: S a -> [Decl] -> S a
-checkDecls f decls = trace "starting checkDecls" $ preDecl f decls
+checkDecls f decls = preDecl f decls
 
 checkForMain :: [Decl] -> S ()
 checkForMain [] = throwError noMain
@@ -34,7 +33,7 @@ preDecl g (d@(FnDef t (Ident f) args block):decls) = do
            (M.insert f (typeFromArgs args (transType t)))
            (do checkTopDef d
                preDecl g decls)
-    else trace "repeating function names" $ throwError repNames
+    else throwError repNames
 preDecl g (VarDecl t vars:decls) = declVars t vars (preDecl g decls)
 
 declVar :: Type -> Item -> S a -> S a

@@ -11,7 +11,6 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe(fromMaybe, fromJust, isNothing)
 import Control.Monad.Except
-import Debug.Trace
 
 type Result = Err String
 
@@ -116,17 +115,16 @@ afterEval :: Program -> IO (Either String Value)
 afterEval prog = runExceptT (runReaderT (evalStateT (evalProgram prog) (M.empty, 0, 0)) M.empty)
 
 evalProgram :: Program -> SS Value
-evalProgram (Prog [d]) = evalDecl d (evalMain)
-evalProgram (Prog (d:decls)) = do
-  evalDecl d (evalProgram (Prog decls))
+evalProgram (Prog [d]) = evalDecl d evalMain
+evalProgram (Prog (d:decls)) = evalDecl d (evalProgram (Prog decls))
 
 evalMain :: SS Value
 evalMain = interpretExpr (EApp (Ident "main") [])
 
 processArgs :: [Arg] -> [ValueArg]
 processArgs [] = []
-processArgs (ArgByVal t v:args) = [ByVal v] ++ processArgs args
-processArgs (ArgByVar t v:args) = [ByVar v] ++ processArgs args
+processArgs (ArgByVal _ v:args) = ByVal v : processArgs args
+processArgs (ArgByVar _ v:args) = ByVar v : processArgs args
 
 evalDecl :: Decl -> SS a -> SS a
 evalDecl (FnDef t (Ident f) args block) g = do
@@ -135,118 +133,116 @@ evalDecl (FnDef t (Ident f) args block) g = do
   let newEnv = M.insert f l env
   local (const newEnv) (setVar (Ident f) (Func (processArgs args) newEnv block) g)
   --decVar f (setVar f (Func (processArgs args) env block) (g))
-evalDecl (VarDecl t []) g = g
-evalDecl (VarDecl t ((Init v e):items)) g = do
+evalDecl (VarDecl t_[]) g = g
+evalDecl (VarDecl t (Init v e:items)) g = do
   val <- interpretExpr e
   decVar v (setVar v val (evalDecl (VarDecl t items) g))
 
 evalLoop :: Block -> Integer -> SS (Maybe Value)
-evalLoop (BlockStmt ((Subsection i b):stmts)) 0 = evalBlock (BlockStmt stmts)
-evalLoop (BlockStmt ((Subsection i b):stmts)) x = do
+evalLoop (BlockStmt (Subsection i b:stmts)) 0 = evalBlock (BlockStmt stmts)
+evalLoop (BlockStmt (Subsection i b:stmts)) x = do
   res <- evalBlock b
   case res of
-    Nothing -> evalLoop (BlockStmt ((Subsection i b):stmts)) (x-1)
+    Nothing -> evalLoop (BlockStmt (Subsection i b : stmts)) (x - 1)
     Just (LF FIN) -> evalBlock (BlockStmt stmts)
-    Just (LF (REP y)) -> evalLoop (BlockStmt ((Subsection i b):stmts)) (x+y)
+    Just (LF (REP y)) -> evalLoop (BlockStmt (Subsection i b : stmts)) (x + y)
     _ -> return res
 
-catchRet :: (Maybe Value) -> SS (Maybe Value)-> SS (Maybe Value)
+catchRet :: Maybe Value -> SS (Maybe Value) -> SS (Maybe Value)
 catchRet r g = if isNothing r then g
   else return r
 
 evalBlock :: Block -> SS (Maybe Value)
 
-evalBlock (BlockStmt ([])) = return Nothing
+evalBlock (BlockStmt []) = return Nothing
 
-evalBlock (BlockStmt ((DeclStmt decls):stmts)) = do
-  evalDecl decls (evalBlock (BlockStmt stmts))
+evalBlock (BlockStmt (DeclStmt decls:stmts)) = evalDecl decls (evalBlock (BlockStmt stmts))
 
 evalBlock (BlockStmt (Empty:stmts)) = evalBlock (BlockStmt stmts)
 
 evalBlock (BlockStmt (BStmt b:stms)) = do
-  res <- (evalBlock b)
+  res <- evalBlock b
   catchRet res (evalBlock (BlockStmt stms))
 
-evalBlock (BlockStmt (((Ass v e)):stmts)) = do
+evalBlock (BlockStmt (Ass v e:stmts)) = do
   val <- interpretExpr e
   setVar v val (evalBlock (BlockStmt stmts))
 
-evalBlock (BlockStmt (((Ret e)):stmts)) = do
+evalBlock (BlockStmt (Ret e:_)) = do
   val <- interpretExpr e
   return (Just val)
 
-evalBlock (BlockStmt (((VRet)):stmts)) = do
-  return (Just ValV)
+evalBlock (BlockStmt (VRet:_)) = return (Just ValV)
 
-evalBlock (BlockStmt (((Cond e s)):stmts)) = do
+evalBlock (BlockStmt (Cond e s:stmts)) = do
   val <- interpretExpr e
   let cond = getBool val
-  if cond then do
-    res <- evalBlock (BlockStmt [s])
-    catchRet res (evalBlock(BlockStmt stmts))
-  else evalBlock (BlockStmt stmts)
+  if cond
+    then do
+      res <- evalBlock (BlockStmt [s])
+      catchRet res (evalBlock (BlockStmt stmts))
+    else evalBlock (BlockStmt stmts)
 
-evalBlock (BlockStmt (((CondElse e s1 s2)):stmts)) = do
+evalBlock (BlockStmt (CondElse e s1 s2:_)) = do
   val <- interpretExpr e
   let cond = getBool val
-  if cond then evalBlock (BlockStmt [s1])
-  else evalBlock (BlockStmt [s2])
+  if cond
+    then evalBlock (BlockStmt [s1])
+    else evalBlock (BlockStmt [s2])
 
-evalBlock (BlockStmt (((SExp e)):stmts)) = do
-  val <- interpretExpr e
-  evalBlock (BlockStmt stmts)
+evalBlock (BlockStmt (SExp _:stmts)) =   evalBlock (BlockStmt stmts)
 
-evalBlock (BlockStmt ((Subsection i b):stmts)) = evalLoop (BlockStmt ((Subsection i b):stmts)) 1
+evalBlock (BlockStmt (Subsection i b:stmts)) = evalLoop (BlockStmt (Subsection i b : stmts)) 1
 
-evalBlock (BlockStmt ((SubsectionPaid i expr b):stmts)) = do
+evalBlock (BlockStmt (SubsectionPaid i expr b:stmts)) = do
   val <- interpretExpr expr
   let toPay = getInt val
   (_, _, toSpend) <- get
   when (toPay < 0) $ throwError "section worth less than 0"
-  if (toSpend >= toPay)
+  if toSpend >= toPay
     then do
       spend toPay
-      evalLoop (BlockStmt ((Subsection i b):stmts)) 1
+      evalLoop (BlockStmt (Subsection i b : stmts)) 1
     else evalBlock (BlockStmt stmts)
 
-evalBlock (BlockStmt ((RepeatXTimes expr):stmts)) = do
+evalBlock (BlockStmt (RepeatXTimes expr:_)) = do
   val <- interpretExpr expr
   let int = getInt val
   return (Just (LF (REP int)))
 
-evalBlock (BlockStmt ((Repeat):stmts)) = evalBlock (BlockStmt ((RepeatXTimes (ELitInt 1)):stmts))
+evalBlock (BlockStmt (Repeat:stmts)) = evalBlock (BlockStmt (RepeatXTimes (ELitInt 1) : stmts))
 
-evalBlock (BlockStmt ((Finish):stmts)) = do
-  return (Just (LF (FIN)))
+evalBlock (BlockStmt (Finish:_)) = return (Just (LF FIN))
 
-evalBlock (BlockStmt ((Show expr):stmts)) = do
+evalBlock (BlockStmt (Show expr:stmts)) = do
   val <- interpretExpr expr
   liftIO $ putStr (show val)
   evalBlock (BlockStmt stmts)
 
-evalBlock (BlockStmt ((Earn expr):stmts)) = do
+evalBlock (BlockStmt (Earn expr:stmts)) = do
   val <- interpretExpr expr
   earn (getInt val)
   evalBlock (BlockStmt stmts)
 
-evalBlock (BlockStmt ((Incr v):stmts)) = evalBlock (BlockStmt ((Ass v ((EAdd (EVar v) Plus (ELitInt 1)))):stmts))
+evalBlock (BlockStmt (Incr v:stmts)) = evalBlock (BlockStmt (Ass v (EAdd (EVar v) Plus (ELitInt 1)) : stmts))
 
-evalBlock (BlockStmt ((Decr v):stmts)) = evalBlock (BlockStmt ((Ass v ((EAdd (EVar v) Minus (ELitInt 1)))):stmts))
+evalBlock (BlockStmt (Decr v:stmts)) = evalBlock (BlockStmt (Ass v (EAdd (EVar v) Minus (ELitInt 1)) : stmts))
 
-evalBlock b = trace ("unexpected block " ++ show b) $ error "unexpected block"
+evalBlock b = error "unexpected block"
 
 -- TODO: in typechecker check if the expression is variable!
 evalFunc :: Value -> [Passed] -> SS (Value)
 evalFunc (Func [] env block) [] = do
   ret <- evalBlock block
   case ret of
-    Nothing -> throwError ("no return statement in the end of function")
-    Just (LF _) -> throwError ("repeat or finish statement not in the section")
+    Nothing -> throwError "no return statement in the end of function"
+    Just (LF _) -> throwError "repeat or finish statement not in the section"
     Just r -> return r
 
-evalFunc (Func ((ByVal v):args) env block ) ((Val p):expr) = decVar v $ setVar v p $ evalFunc (Func args env block) expr
+evalFunc (Func (ByVal v:args) env block) (Val p:expr) = decVar v $ setVar v p $ evalFunc (Func args env block) expr
 
-evalFunc (Func ((ByVar (Ident v)):args) env block ) ((Var l):expr) = local (M.insert v l) (evalFunc (Func args env block) expr)
+evalFunc (Func (ByVar (Ident v):args) env block) (Var l:expr) =
+  local (M.insert v l) (evalFunc (Func args env block) expr)
 
 evalFunc _ _ = error "non-matching argument to function. Possible fault with TypeChecker"
 
