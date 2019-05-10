@@ -61,7 +61,7 @@ checkTopDef :: Decl -> S ()
 checkTopDef (FnDef t (Ident f) args block) = local (M.insert "" (transType t)) funcWithDecls
   where
     funcWithDecls = checkBlock (concatBlocks (declFromArgs args) block)
-checkTopDef elseDef = error ("variable declaration passed to checkTopDef")
+checkTopDef elseDef = error "variable declaration passed to checkTopDef"
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
@@ -77,9 +77,9 @@ defVal TBool = ELitBool (BVAL "false")
 
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt []) = return ()
-checkBlock (BlockStmt ((DeclStmt decl):bs)) = checkDecls (checkBlock (BlockStmt bs)) [decl]
+checkBlock (BlockStmt (DeclStmt decl:bs)) = checkDecls (checkBlock (BlockStmt bs)) [decl]
 checkBlock (BlockStmt (Empty:bs)) = checkBlock (BlockStmt bs)
-checkBlock (BlockStmt ((BStmt b):bs)) = do
+checkBlock (BlockStmt (BStmt b:bs)) = do
   checkBlock b
   checkBlock (BlockStmt bs)
 checkBlock (BlockStmt (Ass (Ident x) e:bs)) = do
