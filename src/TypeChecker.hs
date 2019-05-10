@@ -2,7 +2,6 @@ module TypeChecker where
 
 import AbsOstaczGr
 import Debug.Trace
-import Simplified
 import TypeCheckExpr
 
 import Control.Monad (when)
@@ -12,6 +11,9 @@ import Control.Monad.State
 import qualified Data.Map as M
 import Data.Maybe (fromJust, fromMaybe, isNothing)
 import ErrM
+
+concatBlocks :: Block -> Block -> Block
+concatBlocks (BlockStmt stmts1) (BlockStmt stmts2) = BlockStmt (stmts1++stmts2)
 
 checkProgram :: Program -> Either String ()
 checkProgram (Prog tops) = runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty)
@@ -24,26 +26,24 @@ checkForMain [] = throwError noMain
 checkForMain (FnDef t (Ident f) args block:decls) = unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
 checkForMain (elseDecl:decls) = checkForMain decls
 
--- TODO: simplify using a folding function
--- TODO: possibly reverse args. Idk.
 preDecl :: S a -> [Decl] -> S a
 preDecl g [] = g
-preDecl g ((d@(FnDef t (Ident f) args block)):decls) = do
+preDecl g (d@(FnDef t (Ident f) args block):decls) = do
   env <- ask
   let mt = M.lookup f env
   if isNothing mt
     then local
-           ((M.insert f (typeFromArgs args (transType t))))
+           (M.insert f (typeFromArgs args (transType t)))
            (do checkTopDef d
                preDecl g decls)
-    else trace ("repeating function names") $ throwError repNames
-preDecl g ((VarDecl t (vars)):decls) = declVars t (vars) (preDecl g decls)
+    else trace "repeating function names" $ throwError repNames
+preDecl g (VarDecl t vars:decls) = declVars t vars (preDecl g decls)
 
 declVar :: Type -> Item -> S a -> S a
 declVar t (Init (Ident v) expr) g = do
   tE <- checkExpr expr
   unifyTypes tE (transType t)
-  local (M.insert (v) (transType t)) (g)
+  local (M.insert v (transType t)) (g)
 
 declVars :: Type -> [Item] -> S a -> S a
 declVars t ([]) f = f
