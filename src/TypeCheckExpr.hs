@@ -1,6 +1,5 @@
 module TypeCheckExpr where
-import Control.Monad(when)
-import Control.Monad.Reader
+import Control.Monad (when)import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe(fromMaybe, isNothing, fromJust)
 import AbsOstaczGr

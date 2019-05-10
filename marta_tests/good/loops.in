@@ -11,8 +11,7 @@ int main() {
         if (x >= 20) {
             show "x crossed 20!"
             finish
-        }
-        else {
+        } else {
             repeat
         }
     }

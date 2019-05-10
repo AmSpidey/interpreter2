@@ -1,29 +1,27 @@
 module TypeChecker where
 
-import Simplified
 import AbsOstaczGr
-import TypeCheckExpr
 import Debug.Trace
+import Simplified
+import TypeCheckExpr
 
-import qualified Data.Map as M
-import ErrM
+import Control.Monad (when)
 import Control.Monad.Except
-import Data.Maybe(fromMaybe, isNothing, fromJust)
-import Control.Monad(when)
 import Control.Monad.Reader
 import Control.Monad.State
+import qualified Data.Map as M
+import Data.Maybe (fromJust, fromMaybe, isNothing)
+import ErrM
 
 checkProgram :: Program -> Either String ()
 checkProgram (Prog tops) = runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty)
 
 checkDecls :: S a -> [Decl] -> S a
-checkDecls f (decls) = trace "starting checkDecls" $ preDecl f decls
+checkDecls f decls = trace "starting checkDecls" $ preDecl f decls
 
 checkForMain :: [Decl] -> S ()
-checkForMain [] = throwError $ noMain
-checkForMain ((FnDef t (Ident f) args block):decls) = do
-  unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
-  return ()
+checkForMain [] = throwError noMain
+checkForMain (FnDef t (Ident f) args block:decls) = unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
 checkForMain (elseDecl:decls) = checkForMain decls
 
 -- TODO: simplify using a folding function
@@ -34,9 +32,10 @@ preDecl g ((d@(FnDef t (Ident f) args block)):decls) = do
   env <- ask
   let mt = M.lookup f env
   if isNothing mt
-    then local ((M.insert f (typeFromArgs args (transType t)))) (do
-      checkTopDef d
-      preDecl g decls)
+    then local
+           ((M.insert f (typeFromArgs args (transType t))))
+           (do checkTopDef d
+               preDecl g decls)
     else trace ("repeating function names") $ throwError repNames
 preDecl g ((VarDecl t (vars)):decls) = declVars t (vars) (preDecl g decls)
 
@@ -66,8 +65,10 @@ checkTopDef elseDef = error ("variable declaration passed to checkTopDef")
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
-declFromArgs (ArgByVal t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [Init v (defVal t)])]) (declFromArgs args)
-declFromArgs (ArgByVar t v:args) = concatBlocks (BlockStmt [DeclStmt(VarDecl t [Init v (defVal t)])]) (declFromArgs args)
+declFromArgs (ArgByVal t v:args) =
+  concatBlocks (BlockStmt [DeclStmt (VarDecl t [Init v (defVal t)])]) (declFromArgs args)
+declFromArgs (ArgByVar t v:args) =
+  concatBlocks (BlockStmt [DeclStmt (VarDecl t [Init v (defVal t)])]) (declFromArgs args)
 
 defVal :: Type -> Expr
 defVal TStr = EString ""
@@ -76,31 +77,24 @@ defVal TBool = ELitBool (BVAL "false")
 
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt []) = return ()
-
 checkBlock (BlockStmt ((DeclStmt decl):bs)) = checkDecls (checkBlock (BlockStmt bs)) [decl]
-
 checkBlock (BlockStmt (Empty:bs)) = checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt ((BStmt b):bs)) = do
   checkBlock b
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Ass (Ident x) e:bs)) = do
   t1 <- checkExpr e
   t2 <- checkExpr (EVar (Ident x))
   unifyTypes t1 t2
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Incr (Ident x):bs)) = do
   t <- checkExpr (EVar (Ident x))
   unifyTypes t TI
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Decr (Ident x):bs)) = do
   t <- checkExpr (EVar (Ident x))
   unifyTypes t TI
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Ret e:bs)) = do
   t <- checkExpr e
   env <- ask
@@ -109,7 +103,6 @@ checkBlock (BlockStmt (Ret e:bs)) = do
   let rt = fromJust mt
   unifyTypes rt t
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (VRet:bs)) = do
   env <- ask
   let mt = M.lookup "" env
@@ -117,47 +110,36 @@ checkBlock (BlockStmt (VRet:bs)) = do
   let rt = fromJust mt
   unifyTypes rt TV
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Cond e stmt:bs)) = do
   t <- checkExpr e
   unifyTypes t TB
   checkBlock (BlockStmt [stmt])
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (CondElse e stmt1 stmt2:bs)) = do
   t <- checkExpr e
   unifyTypes t TB
   checkBlock (BlockStmt [stmt1])
   checkBlock (BlockStmt [stmt2])
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Subsection sect b:bs)) = checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (SubsectionPaid sect expr b:bs)) = do
   t <- checkExpr expr
   unifyTypes t TI
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Repeat:bs)) = checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Finish:bs)) = checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Earn expr:bs)) = do
   t <- checkExpr expr
   unifyTypes t TI
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (RepeatXTimes expr:bs)) = do
   t <- checkExpr expr
   unifyTypes t TI
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (SExp expr:bs)) = do
   t <- checkExpr expr
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt (Show expr:bs)) = do
   t <- checkExpr expr
   checkBlock (BlockStmt bs)
-
 checkBlock (BlockStmt bs) = error ("typeChecking of a block not implemented! Block: \n" ++ show bs)
