@@ -31,10 +31,10 @@ defaultErr = "error in typeChecker. Go check your code! Or not. Maybe you have b
 fatalErr = "fatal error in typeChecker. This shouldn't have happened. Blamey."
 noMain = "couldn't find proper int main() function. I personally don't like it."
 repNames = "repeating function names."
-repVars = "repeating variable names in one environment."
 notFound = "variable or function not found in the environment: "
 wrongType = "expression is of the wrong type: "
 unifyFail = "expressions are supposed to be of the same type, but they are not: "
+repArgs = "repeating arguments in function"
 
 type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a

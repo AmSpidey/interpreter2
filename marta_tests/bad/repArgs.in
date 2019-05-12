@@ -1,0 +1,7 @@
+int fun(int a, int b, string a) {
+    ~0;
+}
+
+int main () {
+    ~0;
+}

@@ -7,25 +7,24 @@ import Control.Monad (when)
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.Map as M
+import Data.Set (Set, insert, member, empty)
 import Data.Maybe (fromJust, isNothing)
 
 concatBlocks :: Block -> Block -> Block
 concatBlocks (BlockStmt stmts1) (BlockStmt stmts2) = BlockStmt (stmts1++stmts2)
 
 checkProgram :: Program -> Either String ()
-checkProgram (Prog tops) = runExcept (runReaderT (checkDecls (checkForMain tops) tops) M.empty)
-
-checkDecls :: S a -> [Decl] -> S a
-checkDecls f decls = preDecl f decls
+checkProgram (Prog tops) = runExcept (runReaderT (preDecl (checkForMain tops) tops) M.empty)
 
 checkForMain :: [Decl] -> S ()
 checkForMain [] = throwError noMain
-checkForMain (FnDef t (Ident f) args block:decls) = unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
-checkForMain (elseDecl:decls) = checkForMain decls
+checkForMain (FnDef t (Ident f) args _:decls) = unless (f == "main" && args == [] && t == TInt) $ checkForMain decls
+checkForMain (_:decls) = checkForMain decls
 
 preDecl :: S a -> [Decl] -> S a
 preDecl g [] = g
-preDecl g (d@(FnDef t (Ident f) args block):decls) = do
+preDecl g (d@(FnDef t (Ident f) args _):decls) = do
+  findRepeating args Data.Set.empty
   env <- ask
   let mt = M.lookup f env
   if isNothing mt
@@ -40,25 +39,33 @@ declVar :: Type -> Item -> S a -> S a
 declVar t (Init (Ident v) expr) g = do
   tE <- checkExpr expr
   unifyTypes tE (transType t)
-  local (M.insert v (transType t)) (g)
+  local (M.insert v (transType t)) g
 
 declVars :: Type -> [Item] -> S a -> S a
-declVars t ([]) f = f
-declVars t (v:vars) f = declVar t v (declVars t vars f)
+declVars t vars f = foldr (declVar t) f vars
 
--- TODO: check for void arguments. Is it a bug or a feature?
 typeFromArgs :: [Arg] -> Types -> Types
 typeFromArgs [] t = t
 typeFromArgs (ArgByVal a _:args) t = (ByVal, transType a) :->: typeFromArgs args t
 typeFromArgs (ArgByVar a _:args) t = (ByVar, transType a) :->: typeFromArgs args t
 
+findRepeating :: [Arg] -> Set Ident -> S()
+findRepeating [] _ = return ()
+findRepeating (ArgByVal _ i:args) s = do
+  when (Data.Set.member i s) $ throwError repArgs
+  let newSet = Data.Set.insert i s
+  findRepeating args newSet
+findRepeating (ArgByVar _ i:args) s = do
+  when (Data.Set.member i s) $ throwError repArgs
+  let newSet = Data.Set.insert i s
+  findRepeating args newSet
+
 -- TODO: check for repeating arguments in functions (SET?)
--- TODO: CHECK FOR MAIN.
 checkTopDef :: Decl -> S ()
-checkTopDef (FnDef t (Ident f) args block) = local (M.insert "" (transType t)) funcWithDecls
+checkTopDef (FnDef t (Ident _) args block) = local (M.insert "" (transType t)) funcWithDecls
   where
     funcWithDecls = checkBlock (concatBlocks (declFromArgs args) block)
-checkTopDef elseDef = error "variable declaration passed to checkTopDef"
+checkTopDef _ = error "variable declaration passed to checkTopDef"
 
 declFromArgs :: [Arg] -> Block
 declFromArgs [] = BlockStmt [Empty]
@@ -71,10 +78,11 @@ defVal :: Type -> Expr
 defVal TStr = EString ""
 defVal TInt = ELitInt 0
 defVal TBool = ELitBool (BVAL "false")
+defVal TVoid = error "void passed to defVal"
 
 checkBlock :: Block -> S ()
 checkBlock (BlockStmt []) = return ()
-checkBlock (BlockStmt (DeclStmt decl:bs)) = checkDecls (checkBlock (BlockStmt bs)) [decl]
+checkBlock (BlockStmt (DeclStmt decl:bs)) = preDecl (checkBlock (BlockStmt bs)) [decl]
 checkBlock (BlockStmt (Empty:bs)) = checkBlock (BlockStmt bs)
 checkBlock (BlockStmt (BStmt b:bs)) = do
   checkBlock b
@@ -118,8 +126,8 @@ checkBlock (BlockStmt (CondElse e stmt1 stmt2:bs)) = do
   checkBlock (BlockStmt [stmt1])
   checkBlock (BlockStmt [stmt2])
   checkBlock (BlockStmt bs)
-checkBlock (BlockStmt (Subsection sect b:bs)) = checkBlock (BlockStmt bs)
-checkBlock (BlockStmt (SubsectionPaid sect expr b:bs)) = do
+checkBlock (BlockStmt (Subsection _ _:bs)) = checkBlock (BlockStmt bs)
+checkBlock (BlockStmt (SubsectionPaid _ expr _:bs)) = do
   t <- checkExpr expr
   unifyTypes t TI
   checkBlock (BlockStmt bs)
@@ -134,9 +142,9 @@ checkBlock (BlockStmt (RepeatXTimes expr:bs)) = do
   unifyTypes t TI
   checkBlock (BlockStmt bs)
 checkBlock (BlockStmt (SExp expr:bs)) = do
-  t <- checkExpr expr
+  _ <- checkExpr expr
   checkBlock (BlockStmt bs)
 checkBlock (BlockStmt (Show expr:bs)) = do
-  t <- checkExpr expr
+  _ <- checkExpr expr
   checkBlock (BlockStmt bs)
 checkBlock (BlockStmt bs) = error ("typeChecking of a block not implemented! Block: \n" ++ show bs)
