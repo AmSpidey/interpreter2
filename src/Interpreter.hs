@@ -219,7 +219,9 @@ evalBlock (BlockStmt (CondElse e s1 s2:_)) = do
   if cond
     then evalBlock (BlockStmt [s1])
     else evalBlock (BlockStmt [s2])
-evalBlock (BlockStmt (SExp _:stmts)) = evalBlock (BlockStmt stmts)
+evalBlock (BlockStmt (SExp e:stmts)) = do
+  _ <- interpretExpr e
+  evalBlock (BlockStmt stmts)
 evalBlock (BlockStmt (Subsection i b:stmts)) = evalLoop (BlockStmt (Subsection i b : stmts)) 1
 evalBlock (BlockStmt (SubsectionPaid i expr b:stmts)) = do
   val <- interpretExpr expr
@@ -260,9 +262,6 @@ evalFunc (Func (ByVar (Ident v):args) env block) (Var l:expr) =
   local (M.insert v l) (evalFunc (Func args env block) expr)
 evalFunc _ _ = error "non-matching argument to function. Possible fault with TypeChecker"
 
--- TODO: make it work with Either
--- evalExpr :: Expr -> Value
---evalExpr expr = runExcept (runReaderT (evalStateT (interpretExpr expr) (M.empty, 0)) M.empty)
 preArgs :: [Expr] -> [ValueArg] -> SS [Passed]
 preArgs [] [] = return []
 preArgs (EVar (Ident v):e) (ByVar _:args) = do

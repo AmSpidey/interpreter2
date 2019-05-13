@@ -20,6 +20,8 @@ int fib (int n) {
 }
 
 int main () {
-    show "main started"; putLn();
+    show "main started";
+    show "\n";
+    putLn();
     ~fib (8);
 }

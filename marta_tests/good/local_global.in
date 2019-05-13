@@ -22,7 +22,7 @@ int main() {
     show "\n";
     int fun3() {
         x = 5;
-        show "local fun3 changed x to";
+        show "local fun3 changed x to ";
         show x
         show "\nI will also change p just for fun! To: "
         p = 42;
@@ -40,8 +40,8 @@ int main() {
     show "z = fun2()\n"
     show z
     show "\n";
-    show "after the change x should be 5:";
+    show "after the change x should be equal to 5. x: ";
     show x
     show "\n"
-    ~3;
+    ~0;
 }
