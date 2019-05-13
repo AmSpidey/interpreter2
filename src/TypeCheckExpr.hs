@@ -1,13 +1,24 @@
 module TypeCheckExpr where
-import Control.Monad (when)
-import Control.Monad.Reader
-import Data.Maybe(isNothing, fromJust)
-import AbsOstaczGr
-import qualified Data.Map as M
-import Control.Monad.Except
 
-data Types = TI | TB | TS | TV | (ByType, Types) :->: Types deriving (Eq, Show)
-data ByType = ByVar | ByVal deriving (Eq, Show)
+import AbsOstaczGr
+import Control.Monad (when)
+import Control.Monad.Except
+import Control.Monad.Reader
+import qualified Data.Map as M
+import Data.Maybe (fromJust, isNothing)
+
+data Types
+  = TI
+  | TB
+  | TS
+  | TV
+  | (ByType, Types) :->: Types
+  deriving (Eq, Show)
+
+data ByType
+  = ByVar
+  | ByVal
+  deriving (Eq, Show)
 
 unifyTypes :: Types -> Types -> S ()
 unifyTypes t1 t2 = when (t1 /= t2) $ throwError (unifyFail ++ show t1 ++ " and " ++ show t2)
@@ -27,16 +38,36 @@ isInEnv (Ident x) = do
     else return True
 
 type TypeError = String
+
+defaultErr :: String
+fatalErr :: String
+noMain :: String
+repNames :: String
+notFound :: String
+wrongType :: String
+unifyFail :: String
+repArgs :: String
+wrongShow :: String
 defaultErr = "error in typeChecker. Go check your code! Or not. Maybe you have better stuff to do. I'm not your mom."
+
 fatalErr = "fatal error in typeChecker. This shouldn't have happened. Blamey."
+
 noMain = "couldn't find proper int main() function. I personally don't like it."
+
 repNames = "repeating function names."
+
 notFound = "variable or function not found in the environment: "
+
 wrongType = "expression is of the wrong type: "
+
 unifyFail = "expressions are supposed to be of the same type, but they are not: "
+
 repArgs = "repeating arguments in function"
 
+wrongShow = "wrong type of argument to show"
+
 type TypeEnv = M.Map String Types
+
 type S a = ReaderT TypeEnv (Except TypeError) a
 
 passToTypes :: [Expr] -> Types -> S Types
@@ -51,7 +82,7 @@ passToTypes (e:expr) ret = do
   return ((ByVal, t1) :->: t2)
 
 retType :: Types -> S Types
-retType (t :->: types) = retType types
+retType (_ :->: types) = retType types
 retType t = return t
 
 checkExpr :: Expr -> S Types
@@ -72,19 +103,19 @@ checkExpr (Neg x) = do
   case t of
     TI -> return TI
     _ -> throwError (wrongType ++ show x)
-checkExpr (EMul expr1 op expr2) = do
+checkExpr (EMul expr1 _ expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
   unifyTypes t1 t2
   unifyTypes t2 TI
   return TI
-checkExpr (EAdd expr1 op expr2) = do
+checkExpr (EAdd expr1 _ expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
   unifyTypes t1 t2
   unifyTypes t2 TI
   return TI
-checkExpr (ERel expr1 op expr2) = do
+checkExpr (ERel expr1 _ expr2) = do
   t1 <- checkExpr expr1
   t2 <- checkExpr expr2
   unifyTypes t1 t2
@@ -111,4 +142,3 @@ checkExpr (EApp (Ident f) pass) = do
   t1 <- passToTypes pass ret
   unifyTypes t1 t
   return ret
-

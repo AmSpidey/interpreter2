@@ -1,8 +1,7 @@
 module Main where
 
-import System.Environment (getArgs, getProgName)
+import System.Environment (getArgs)
 import System.Exit (exitFailure, exitSuccess)
-import System.IO (hGetContents, stdin)
 
 import AbsOstaczGr
 import Control.Monad (when)
@@ -16,6 +15,7 @@ import ErrM
 
 type ParseFun a = [Token] -> Err a
 
+myLLexer :: String -> [Token]
 myLLexer = myLexer
 
 type Verbosity = Int
@@ -31,22 +31,16 @@ run v p s =
   let ts = myLLexer s
    in case p ts of
         Bad err -> do
-          putStrLn "\nParse              Failed...\n" -- TODO: delet dis printt
+          putStrLn "\nParse              Failed...\n"
           putStrV v "Tokens:"
           putStrLn err
           exitFailure
         Ok tree -> do
-          putStrLn "\nParse Successful!"
-          showTree v tree
-          putStrLn "*******************"
-          putStrLn "*******************"
           case checkProgram tree of
             Left e -> do
               putStrLn ("TypeChecker error. Following error first occured: " ++ e)
               exitFailure
-            Right _ -> putStrLn "Type checking passed."
-          putStrLn "******************"
-          putStrLn "NOW IT'S TIME TO DEPLOY THE INTERPRETER! HURRAY!"
+            Right _ -> return ()
           res <- afterEval tree
           case res of
             Left e -> do

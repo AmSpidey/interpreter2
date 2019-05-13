@@ -7,11 +7,11 @@ import Control.Monad (when)
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.Map as M
-import Data.Set (Set, insert, member, empty)
 import Data.Maybe (fromJust, isNothing)
+import Data.Set (Set, empty, insert, member)
 
 concatBlocks :: Block -> Block -> Block
-concatBlocks (BlockStmt stmts1) (BlockStmt stmts2) = BlockStmt (stmts1++stmts2)
+concatBlocks (BlockStmt stmts1) (BlockStmt stmts2) = BlockStmt (stmts1 ++ stmts2)
 
 checkProgram :: Program -> Either String ()
 checkProgram (Prog tops) = runExcept (runReaderT (preDecl (checkForMain tops) tops) M.empty)
@@ -49,7 +49,7 @@ typeFromArgs [] t = t
 typeFromArgs (ArgByVal a _:args) t = (ByVal, transType a) :->: typeFromArgs args t
 typeFromArgs (ArgByVar a _:args) t = (ByVar, transType a) :->: typeFromArgs args t
 
-findRepeating :: [Arg] -> Set Ident -> S()
+findRepeating :: [Arg] -> Set Ident -> S ()
 findRepeating [] _ = return ()
 findRepeating (ArgByVal _ i:args) s = do
   when (Data.Set.member i s) $ throwError repArgs
@@ -145,6 +145,6 @@ checkBlock (BlockStmt (SExp expr:bs)) = do
   _ <- checkExpr expr
   checkBlock (BlockStmt bs)
 checkBlock (BlockStmt (Show expr:bs)) = do
-  _ <- checkExpr expr
+  t <- checkExpr expr
+  when (t /= TI && t /= TS && t /= TB) $ throwError wrongShow
   checkBlock (BlockStmt bs)
-checkBlock (BlockStmt bs) = error ("typeChecking of a block not implemented! Block: \n" ++ show bs)

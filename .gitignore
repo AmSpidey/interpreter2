@@ -1,4 +1,6 @@
 .stack-work/
 out
+src/*.hi
+src/*.o
 .idea
 *~
