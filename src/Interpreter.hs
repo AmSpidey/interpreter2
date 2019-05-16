@@ -87,13 +87,15 @@ inLocal locEnv = local (const locEnv)
 
 earn :: Integer -> SS ()
 earn x
-  | x < 0 = throwError "trying to earn less than 0 amount of money"
+  | x < 0 = throwError ("trying to earn less than 0 amount of money " ++ (show x))
   | otherwise = do
     (mem, loc, coins) <- get
     put (mem, loc, coins + x)
 
 spend :: Integer -> SS ()
-spend x = earn (-x)
+spend x = do
+  (mem, loc, coins) <- get
+  put (mem, loc, coins - x)
 
 decVar :: Ident -> SS a -> SS a
 decVar (Ident v) g = do

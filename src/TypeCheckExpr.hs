@@ -72,14 +72,15 @@ type S a = ReaderT TypeEnv (Except TypeError) a
 
 passToTypes :: [Expr] -> Types -> S Types
 passToTypes [] ret = return ret
-passToTypes (EVar (Ident x):expr) ret = do
+passToTypes (EVar (Ident x):expr) ((ByVar,_) :->: args)= do
   t1 <- checkExpr (EVar (Ident x))
-  t2 <- passToTypes expr ret
+  t2 <- passToTypes expr args
   return ((ByVar, t1) :->: t2)
-passToTypes (e:expr) ret = do
+passToTypes (e:expr) ((ByVal,_) :->: args)= do
   t1 <- checkExpr e
-  t2 <- passToTypes expr ret
+  t2 <- passToTypes expr args
   return ((ByVal, t1) :->: t2)
+passToTypes _ _ = error ("unexpected arguments to passToTypes")
 
 retType :: Types -> S Types
 retType (_ :->: types) = retType types
@@ -139,6 +140,6 @@ checkExpr (EApp (Ident f) pass) = do
   when (isNothing t2) $ throwError (notFound ++ f)
   let t = fromJust t2
   ret <- retType t
-  t1 <- passToTypes pass ret
+  t1 <- passToTypes pass t
   unifyTypes t1 t
   return ret

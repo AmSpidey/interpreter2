@@ -4,9 +4,11 @@ int main() {
     int x = 5;
     show "beginning x is "
     show x;
+    show "\n";
     @_ sekcja {
-        show "x in the beginning of section is";
+        show "x in the beginning of section is ";
         show x;
+        show "\n";
         x = x + 4;
         if (x >= 20) {
             show "x crossed 20!"
