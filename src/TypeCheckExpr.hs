@@ -71,6 +71,7 @@ type TypeEnv = M.Map String Types
 type S a = ReaderT TypeEnv (Except TypeError) a
 
 passToTypes :: [Expr] -> Types -> S Types
+passToTypes [] (_ :->:_) = throwError "wrong amount of arguments passed to function"
 passToTypes [] ret = return ret
 passToTypes (EVar (Ident x):expr) ((ByVar,_) :->: args)= do
   t1 <- checkExpr (EVar (Ident x))
@@ -80,7 +81,7 @@ passToTypes (e:expr) ((ByVal,_) :->: args)= do
   t1 <- checkExpr e
   t2 <- passToTypes expr args
   return ((ByVal, t1) :->: t2)
-passToTypes _ _ = error ("unexpected arguments to passToTypes")
+passToTypes _ _ = throwError "wrong arguments passed to function"
 
 retType :: Types -> S Types
 retType (_ :->: types) = retType types
